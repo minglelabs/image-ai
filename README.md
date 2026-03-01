@@ -176,6 +176,7 @@ Notes:
 - Text box limits: `width 120..round(canvasWidth*0.93)`, `fontSize 18..160` (API에서 범위 밖 값은 clamp).
 - Shape metadata includes background, phone frame, and all text boxes.
 - ZIP export can include original media binaries when `includeOriginalMedia=true`.
+- GUI media upload now syncs binary to API media storage (`PUT /api/projects/:projectId/canvases/:canvasId/media`).
 - API responses now include project `revision` for optimistic concurrency.
 - `POST /api/projects/import` should include `expectedRevision` when updating existing projects.
 - In integrated dev mode (`npm run dev`), GUI projects and API projects are auto-merged/synced.

@@ -100,6 +100,7 @@ Notes:
 
 - ZIP export embeds original media binaries only when `includeOriginalMedia=true`.
 - API media binaries are stored under `.project-saves/media/<projectId>/<canvasId>/`.
+- GUI media uploads also sync the same binary to API `PUT /api/projects/:projectId/canvases/:canvasId/media`.
 - The API can import/operate on saved project payloads using `POST /api/projects/import`.
 - `POST /api/projects/import` for an existing project should include `expectedRevision`.
   - If stale, API returns `409` with `code: "revision_conflict"` and `expectedRevision` / `actualRevision`.

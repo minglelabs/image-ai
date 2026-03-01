@@ -321,6 +321,19 @@ interface ApiProjectDetailPayload {
   state?: unknown;
 }
 
+interface ApiCanvasMediaPutPayload {
+  project?: {
+    id?: string;
+    updatedAt?: string;
+    revision?: number;
+  };
+  canvasId?: string;
+  media?: {
+    kind?: 'image' | 'video';
+    name?: string;
+  };
+}
+
 function getCanvasPresetById(id: string) {
   return getCanvasPresetByIdCore(id);
 }
@@ -4098,6 +4111,90 @@ function App() {
         setErrorMessage('캔버스가 선택되지 않았습니다. 캔버스를 다시 선택해 주세요.');
         return;
       }
+      const targetProjectId = currentProjectId;
+      const targetCanvasId = currentCanvasId;
+      if (!targetProjectId || !targetCanvasId) {
+        setErrorMessage('프로젝트/캔버스 식별자 확인에 실패했습니다. 다시 시도해 주세요.');
+        return;
+      }
+      const targetMediaStorageKey = buildProjectCanvasMediaKey(targetProjectId, targetCanvasId);
+
+      const syncCanvasMediaToApi = async (kind: 'image' | 'video') => {
+        const query = new URLSearchParams();
+        query.set('kind', kind);
+        query.set('name', file.name);
+
+        const response = await fetch(
+          `/api/projects/${encodeURIComponent(targetProjectId)}/canvases/${encodeURIComponent(targetCanvasId)}/media?${query.toString()}`,
+          {
+            method: 'PUT',
+            headers: {
+              'Content-Type': file.type || (kind === 'image' ? 'image/png' : 'video/mp4'),
+            },
+            body: file,
+          },
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => '');
+          throw new Error(
+            errorText
+              ? `API 미디어 동기화 실패 (${response.status}): ${errorText}`
+              : `API 미디어 동기화 실패 (${response.status})`,
+          );
+        }
+
+        const payload = (await response.json().catch(() => null)) as ApiCanvasMediaPutPayload | null;
+        const revisionRaw = payload?.project?.revision;
+        const updatedAtRaw = payload?.project?.updatedAt;
+        const syncedKind = payload?.media?.kind === 'image' || payload?.media?.kind === 'video'
+          ? payload.media.kind
+          : kind;
+        const syncedName = typeof payload?.media?.name === 'string' && payload.media.name
+          ? payload.media.name
+          : file.name;
+
+        setProjects((previous) =>
+          previous.map((project) => {
+            if (project.id !== targetProjectId) {
+              return project;
+            }
+
+            const nextRevision =
+              typeof revisionRaw === 'number' && Number.isFinite(revisionRaw)
+                ? Math.max(0, Math.floor(revisionRaw))
+                : project.revision;
+            const nextUpdatedAt =
+              typeof updatedAtRaw === 'string' && updatedAtRaw
+                ? updatedAtRaw
+                : project.updatedAt;
+
+            return {
+              ...project,
+              revision: nextRevision,
+              updatedAt: nextUpdatedAt,
+              state: {
+                ...project.state,
+                canvases: project.state.canvases.map((canvas) =>
+                  canvas.id === targetCanvasId
+                    ? {
+                        ...canvas,
+                        state: {
+                          ...canvas.state,
+                          media: {
+                            kind: syncedKind,
+                            name: syncedName,
+                          },
+                        },
+                      }
+                    : canvas,
+                ),
+              },
+            };
+          }),
+        );
+        markProjectSyncable(targetProjectId);
+      };
 
       setErrorMessage('');
       setStatusMessage('미디어를 불러오는 중입니다...');
@@ -4127,7 +4224,7 @@ function App() {
           setAssetKind('image');
           setStatusMessage('이미지 업로드 완료. PNG로 출력됩니다.');
           void saveProjectMediaRecord({
-            projectId: currentMediaStorageKey,
+            projectId: targetMediaStorageKey,
             kind: 'image',
             name: file.name,
             type: file.type,
@@ -4135,6 +4232,9 @@ function App() {
             updatedAt: new Date().toISOString(),
           }).catch(() => {
             setErrorMessage('이미지 캐시 저장에 실패했습니다. 새로고침 시 복원이 안 될 수 있습니다.');
+          });
+          void syncCanvasMediaToApi('image').catch((error) => {
+            setErrorMessage(error instanceof Error ? error.message : 'API 미디어 동기화에 실패했습니다.');
           });
           return;
         }
@@ -4161,7 +4261,7 @@ function App() {
         setAssetKind('video');
         setStatusMessage('영상 업로드 완료. 영상으로 출력됩니다.');
         void saveProjectMediaRecord({
-          projectId: currentMediaStorageKey,
+          projectId: targetMediaStorageKey,
           kind: 'video',
           name: file.name,
           type: file.type,
@@ -4169,6 +4269,9 @@ function App() {
           updatedAt: new Date().toISOString(),
         }).catch(() => {
           setErrorMessage('영상 캐시 저장에 실패했습니다. 새로고침 시 복원이 안 될 수 있습니다.');
+        });
+        void syncCanvasMediaToApi('video').catch((error) => {
+          setErrorMessage(error instanceof Error ? error.message : 'API 미디어 동기화에 실패했습니다.');
         });
       } catch (error) {
         imageRef.current = null;
@@ -4179,12 +4282,10 @@ function App() {
         setAssetObjectUrl(null);
         setErrorMessage(error instanceof Error ? error.message : '업로드 처리에 실패했습니다.');
         setStatusMessage('파일을 다시 선택해 주세요.');
-        if (currentMediaStorageKey) {
-          void removeProjectMediaRecord(currentMediaStorageKey).catch(() => undefined);
-        }
+        void removeProjectMediaRecord(targetMediaStorageKey).catch(() => undefined);
       }
     },
-    [currentMediaStorageKey, setAssetObjectUrl],
+    [currentCanvasId, currentMediaStorageKey, currentProjectId, markProjectSyncable, setAssetObjectUrl],
   );
 
   const handleFileChange = useCallback(

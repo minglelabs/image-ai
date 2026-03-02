@@ -41,6 +41,7 @@ import {
   readCanvasMediaMeta,
   saveCanvasMedia,
 } from './media-store.js';
+import { normalizeVideoForAppStore } from './video-normalize.js';
 
 class HttpError extends Error {
   status: number;
@@ -451,6 +452,38 @@ async function handleRequest(request: IncomingMessage, response: ServerResponse)
       service: 'appstore-preview-api',
       now: new Date().toISOString(),
     });
+    return;
+  }
+
+  if (
+    request.method === 'POST' &&
+    segments.length === 4 &&
+    segments[1] === 'video' &&
+    segments[2] === 'normalize' &&
+    segments[3] === 'appstore'
+  ) {
+    const sourceName = url.searchParams.get('sourceName') ?? undefined;
+    const minDurationRaw = Number.parseFloat(url.searchParams.get('minDurationSeconds') ?? '');
+    const minDurationSeconds = Number.isFinite(minDurationRaw) ? Math.max(0.5, Math.min(120, minDurationRaw)) : undefined;
+    const payload = await readBinaryBody(request);
+    const normalized = await normalizeVideoForAppStore(payload, {
+      sourceName,
+      minDurationSeconds,
+    });
+
+    sendBinary(
+      response,
+      200,
+      normalized.mimeType,
+      normalized.fileName,
+      normalized.data,
+      {
+        'X-AppStore-Video-Input-Duration': normalized.inputDurationSeconds.toFixed(3),
+        'X-AppStore-Video-Output-Duration': normalized.outputDurationSeconds.toFixed(3),
+        'X-AppStore-Video-Padded': normalized.padded ? 'true' : 'false',
+        'X-AppStore-Video-Pad-Seconds': normalized.paddedSeconds.toFixed(3),
+      },
+    );
     return;
   }
 

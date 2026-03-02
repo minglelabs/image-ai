@@ -94,6 +94,8 @@ Common flow:
    - project meta: `GET /api/projects/:projectId/meta`
 12. Export as ZIP: `POST /api/projects/:projectId/export/zip`
    - options: `includePngPreview` (default `true`), `includeOriginalMedia` (default `false`)
+13. Normalize video for App Store upload: `POST /api/video/normalize/appstore`
+   - options: `sourceName`, `minDurationSeconds` (default `15.2`)
 
 Example requests:
 
@@ -165,6 +167,12 @@ curl -L -X POST http://localhost:4318/api/projects/<projectId>/export/zip \
   -H "Content-Type: application/json" \
   -d '{"includePngPreview":true,"includeOriginalMedia":true}' \
   -o appstore-preview-export-with-media.zip
+
+# 17) normalize any preview video to App Store-safe MP4 (AAC + min duration)
+curl -L -X POST "http://localhost:4318/api/video/normalize/appstore?sourceName=c1.mp4&minDurationSeconds=15.2" \
+  -H "Content-Type: video/mp4" \
+  --data-binary "@./c1.mp4" \
+  -o c1-appstore.mp4
 ```
 
 Notes:
@@ -177,6 +185,7 @@ Notes:
 - Shape metadata includes background, phone frame, and all text boxes.
 - ZIP export can include original media binaries when `includeOriginalMedia=true`.
 - GUI media upload now syncs binary to API media storage (`PUT /api/projects/:projectId/canvases/:canvasId/media`).
+- GUI video export also normalizes through API (`POST /api/video/normalize/appstore`) to produce App Store-safe MP4.
 - API responses now include project `revision` for optimistic concurrency.
 - `POST /api/projects/import` should include `expectedRevision` when updating existing projects.
 - In integrated dev mode (`npm run dev`), GUI projects and API projects are auto-merged/synced.

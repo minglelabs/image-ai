@@ -256,6 +256,7 @@ const PHONE_SCALE_PERCENT_MIN = 50;
 const PHONE_SCALE_PERCENT_MAX = 180;
 const HISTORY_LIMIT_PER_CANVAS = 120;
 const HISTORY_IDLE_COMMIT_DELAY_MS = 100;
+const APPSTORE_VIDEO_MIN_DURATION_SECONDS = 15.2;
 const PROJECT_MEDIA_DB_NAME = 'appstore-preview-media-db';
 const PROJECT_MEDIA_DB_VERSION = 1;
 const PROJECT_MEDIA_STORE_NAME = 'project_media';
@@ -5155,6 +5156,39 @@ function App() {
     [],
   );
 
+  const normalizeVideoArtifactForAppStore = useCallback(
+    async (artifact: CanvasExportArtifact, sourceName: string): Promise<CanvasExportArtifact> => {
+      const query = new URLSearchParams();
+      query.set('sourceName', sourceName || 'appstore-preview');
+      query.set('minDurationSeconds', String(APPSTORE_VIDEO_MIN_DURATION_SECONDS));
+
+      const response = await fetch(`/api/video/normalize/appstore?${query.toString()}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': artifact.mimeType || 'application/octet-stream',
+        },
+        body: artifact.blob,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        throw new Error(
+          errorText
+            ? `앱스토어 업로드용 변환 실패 (${response.status}): ${errorText}`
+            : `앱스토어 업로드용 변환 실패 (${response.status})`,
+        );
+      }
+
+      const normalizedBlob = await response.blob();
+      return {
+        blob: normalizedBlob,
+        mimeType: normalizedBlob.type || 'video/mp4',
+        extension: 'mp4',
+      };
+    },
+    [],
+  );
+
   const exportImage = useCallback(async () => {
     const artifactResult = await renderCanvasImageArtifact(currentCanvasState, imageRef.current);
     setArtifactBlob(
@@ -5171,14 +5205,18 @@ function App() {
     }
 
     const artifactResult = await renderCanvasVideoArtifact(currentCanvasState, assetUrl);
-    setArtifactBlob(
-      artifactResult.blob,
-      'video',
-      artifactResult.mimeType,
-      buildOutputFileName(assetName || 'preview', artifactResult.extension),
+    const normalizedResult = await normalizeVideoArtifactForAppStore(
+      artifactResult,
+      assetName || 'appstore-preview',
     );
-    return artifactResult.mimeType;
-  }, [assetName, assetUrl, currentCanvasState, renderCanvasVideoArtifact, setArtifactBlob]);
+    setArtifactBlob(
+      normalizedResult.blob,
+      'video',
+      normalizedResult.mimeType,
+      buildOutputFileName(assetName || 'preview', normalizedResult.extension),
+    );
+    return normalizedResult.mimeType;
+  }, [assetName, assetUrl, currentCanvasState, normalizeVideoArtifactForAppStore, renderCanvasVideoArtifact, setArtifactBlob]);
 
   const handleExport = useCallback(async () => {
     if (!assetKind) {
@@ -5194,14 +5232,8 @@ function App() {
         await exportImage();
         setStatusMessage('이미지 출력 완료: PNG 파일이 저장되었습니다.');
       } else {
-        const outputMime = await exportVideo();
-        const isMp4Output = outputMime.includes('mp4');
-        const sourceIsMp4 = /\.mp4$/i.test(assetName);
-        if (sourceIsMp4 && !isMp4Output) {
-          setStatusMessage('영상 출력 완료: 현재 브라우저 인코더 제한으로 WebM으로 저장되었습니다.');
-        } else {
-          setStatusMessage(`영상 출력 완료: ${isMp4Output ? 'MP4' : 'WebM'} 파일이 저장되었습니다.`);
-        }
+        await exportVideo();
+        setStatusMessage('영상 출력 완료: 앱스토어 업로드용 MP4(AAC 포함)로 저장되었습니다.');
       }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : '내보내기에 실패했습니다.');
@@ -5209,7 +5241,7 @@ function App() {
     } finally {
       setIsExporting(false);
     }
-  }, [assetKind, assetName, exportImage, exportVideo]);
+  }, [assetKind, exportImage, exportVideo]);
 
   const measureProjectsTextBoxes = useCallback(
     async (targetProjectIds: string[]) => {
@@ -5506,7 +5538,11 @@ function App() {
             }
 
             try {
-              const result = await renderCanvasVideoArtifact(state, sourceUrl);
+              const rendered = await renderCanvasVideoArtifact(state, sourceUrl);
+              const result = await normalizeVideoArtifactForAppStore(
+                rendered,
+                buildBatchCanvasOutputFileName(index, canvas.name, 'mp4'),
+              );
               zip.file(
                 buildBatchCanvasOutputFileName(index, canvas.name, result.extension),
                 result.blob,
@@ -5600,6 +5636,7 @@ function App() {
     currentCanvasId,
     currentProject,
     currentProjectState,
+    normalizeVideoArtifactForAppStore,
     readCanvasMediaRecordForExport,
     renderCanvasImageArtifact,
     renderCanvasVideoArtifact,

@@ -95,12 +95,19 @@ Main endpoints:
   - Body options:
     - `includePngPreview?: boolean` (default `true`)
     - `includeOriginalMedia?: boolean` (default `false`) to embed original image/video binaries
+- `POST /api/video/normalize/appstore`
+  - Normalize an input video binary for App Store upload compatibility (H.264 + AAC-LC + faststart)
+  - Adds silent AAC track and pads short videos to min duration (default `15.2s`)
+  - Query options:
+    - `sourceName?: string`
+    - `minDurationSeconds?: number`
 
 Notes:
 
 - ZIP export embeds original media binaries only when `includeOriginalMedia=true`.
 - API media binaries are stored under `.project-saves/media/<projectId>/<canvasId>/`.
 - GUI media uploads also sync the same binary to API `PUT /api/projects/:projectId/canvases/:canvasId/media`.
+- GUI video export (single + project ZIP) additionally runs `/api/video/normalize/appstore` so C1 outputs are App Store-safe MP4 by default.
 - The API can import/operate on saved project payloads using `POST /api/projects/import`.
 - `POST /api/projects/import` for an existing project should include `expectedRevision`.
   - If stale, API returns `409` with `code: "revision_conflict"` and `expectedRevision` / `actualRevision`.
@@ -177,6 +184,12 @@ curl -L -X POST "http://localhost:4318/api/projects/<projectId>/export/zip" \
   -H "Content-Type: application/json" \
   -d '{"includePngPreview":true,"includeOriginalMedia":true}' \
   -o appstore-preview-export-with-media.zip
+
+# normalize any video binary to App Store-safe MP4
+curl -L -X POST "http://localhost:4318/api/video/normalize/appstore?sourceName=c1.mp4&minDurationSeconds=15.2" \
+  -H "Content-Type: video/mp4" \
+  --data-binary "@./c1.mp4" \
+  -o c1-appstore.mp4
 ```
 
 ## What This Project Is

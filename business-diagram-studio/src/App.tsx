@@ -3170,9 +3170,18 @@ function QuadrantBackdrop({
   const safeYBottom = yAxisBottomName || '';
   const safeHeaderTitle = headerTitle ?? '';
   const safeHeaderSubtitle = headerSubtitle ?? '';
-  const headerTitleY = 36;
-  const headerSubtitleY = 62;
-  const yTopAxisLabelY = 148;
+  const centerX = CANVAS_WIDTH / 2;
+  const centerY = CANVAS_HEIGHT / 2;
+  const plotLeft = 84;
+  const plotRight = CANVAS_WIDTH - 84;
+  const plotTop = 116;
+  const plotBottom = CANVAS_HEIGHT - 84;
+  const xLeftOutsideX = 46;
+  const xRightOutsideX = CANVAS_WIDTH - 46;
+  const headerTitleY = 22;
+  const headerSubtitleY = 44;
+  const yTopAxisLabelY = 86;
+  const yBottomAxisLabelY = CANVAS_HEIGHT - 22;
 
   return (
     <svg className="diagram-backdrop" viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`} aria-hidden="true">
@@ -3184,32 +3193,50 @@ function QuadrantBackdrop({
       </defs>
 
       <rect x="0" y="0" width={CANVAS_WIDTH} height={CANVAS_HEIGHT} fill="url(#quad-bg)" rx="26" />
-      <line x1={CANVAS_WIDTH / 2} y1={84} x2={CANVAS_WIDTH / 2} y2={CANVAS_HEIGHT - 74} stroke="#0f766e" strokeWidth={2.5} />
-      <line x1={84} y1={CANVAS_HEIGHT / 2} x2={CANVAS_WIDTH - 84} y2={CANVAS_HEIGHT / 2} stroke="#0f766e" strokeWidth={2.5} />
+      <line x1={centerX} y1={plotTop} x2={centerX} y2={plotBottom} stroke="#0f766e" strokeWidth={2.5} />
+      <line x1={plotLeft} y1={centerY} x2={plotRight} y2={centerY} stroke="#0f766e" strokeWidth={2.5} />
 
-      <text x={CANVAS_WIDTH - 66} y={CANVAS_HEIGHT / 2 - 10} textAnchor="middle" fill="rgba(15,23,42,0.72)" fontSize={14} fontWeight={700}>
+      <text x={plotRight + 18} y={centerY - 10} textAnchor="middle" fill="rgba(15,23,42,0.72)" fontSize={14} fontWeight={700}>
         X
       </text>
-      <text x={CANVAS_WIDTH / 2 + 14} y={102} textAnchor="middle" fill="rgba(15,23,42,0.72)" fontSize={14} fontWeight={700}>
+      <text x={centerX + 14} y={plotTop + 20} textAnchor="middle" fill="rgba(15,23,42,0.72)" fontSize={14} fontWeight={700}>
         Y
       </text>
 
-      <text x={92} y={CANVAS_HEIGHT / 2 - 18} textAnchor="start" fill="#0f172a" fontSize={18} fontWeight={700}>
+      <text
+        x={xLeftOutsideX}
+        y={centerY}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        transform={`rotate(-90 ${xLeftOutsideX} ${centerY})`}
+        fill="#0f172a"
+        fontSize={18}
+        fontWeight={700}
+      >
         {safeXLeft}
       </text>
 
       {safeXRight ? (
-        <text x={CANVAS_WIDTH - 92} y={CANVAS_HEIGHT / 2 - 18} textAnchor="end" fill="#0f172a" fontSize={18} fontWeight={700}>
+        <text
+          x={xRightOutsideX}
+          y={centerY}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          transform={`rotate(90 ${xRightOutsideX} ${centerY})`}
+          fill="#0f172a"
+          fontSize={18}
+          fontWeight={700}
+        >
           {safeXRight}
         </text>
       ) : null}
 
-      <text x={CANVAS_WIDTH / 2 + 14} y={yTopAxisLabelY} textAnchor="start" fill="#0f172a" fontSize={18} fontWeight={700}>
+      <text x={centerX} y={yTopAxisLabelY} textAnchor="middle" fill="#0f172a" fontSize={18} fontWeight={700}>
         {safeYTop}
       </text>
 
       {safeYBottom ? (
-        <text x={CANVAS_WIDTH / 2 + 14} y={CANVAS_HEIGHT - 86} textAnchor="start" fill="#0f172a" fontSize={18} fontWeight={700}>
+        <text x={centerX} y={yBottomAxisLabelY} textAnchor="middle" fill="#0f172a" fontSize={18} fontWeight={700}>
           {safeYBottom}
         </text>
       ) : null}

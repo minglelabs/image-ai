@@ -457,10 +457,57 @@ function getQuadrantHeaderTexts(quadrant: QuadrantProjectData | undefined) {
   };
 }
 
+interface AppRoute {
+  scene: Scene;
+  projectId: string | null;
+}
+
+function parseAppRoute(pathname: string): AppRoute {
+  const normalized =
+    pathname !== '/' && pathname.endsWith('/') ? pathname.replace(/\/+$/, '') || '/' : pathname;
+
+  if (normalized === '/new') {
+    return { scene: 'new', projectId: null };
+  }
+
+  if (normalized.startsWith('/projects/')) {
+    const encodedProjectId = normalized.slice('/projects/'.length).split('/')[0];
+    if (encodedProjectId) {
+      return {
+        scene: 'editor',
+        projectId: decodeURIComponent(encodedProjectId),
+      };
+    }
+  }
+
+  return { scene: 'home', projectId: null };
+}
+
+function buildAppRoutePath(scene: Scene, projectId: string | null) {
+  if (scene === 'new') {
+    return '/new';
+  }
+
+  if (scene === 'editor' && projectId) {
+    return `/projects/${encodeURIComponent(projectId)}`;
+  }
+
+  return '/';
+}
+
+function getInitialRoute() {
+  if (typeof window === 'undefined') {
+    return { scene: 'home', projectId: null } as AppRoute;
+  }
+
+  return parseAppRoute(window.location.pathname);
+}
+
 function App() {
+  const initialRoute = getInitialRoute();
   const [projects, setProjects] = useState<DiagramProject[]>([]);
-  const [scene, setScene] = useState<Scene>('home');
-  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [scene, setScene] = useState<Scene>(initialRoute.scene);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(initialRoute.projectId);
   const [newProjectType, setNewProjectType] = useState<ProjectType>('venn');
   const [newProjectName, setNewProjectName] = useState('');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -479,6 +526,8 @@ function App() {
   const saveInFlightRef = useRef(false);
   const autoSaveErrorNotifiedRef = useRef(false);
   const lastSavedSignatureRef = useRef('');
+  const routeSyncLockRef = useRef(false);
+  const [isApiHydrated, setIsApiHydrated] = useState(false);
 
   const currentProject = useMemo(
     () => projects.find((project) => project.id === currentProjectId) ?? null,
@@ -486,7 +535,7 @@ function App() {
   );
 
   useEffect(() => {
-    if (!currentProjectId) {
+    if (!isApiHydrated || scene !== 'editor' || !currentProjectId) {
       return;
     }
 
@@ -499,7 +548,8 @@ function App() {
     setScene('home');
     setSelectedItemId(null);
     setSelectedVennSetId(null);
-  }, [currentProjectId, projects]);
+    setStatusMessage('프로젝트 경로를 찾을 수 없어 메인으로 이동했습니다.');
+  }, [currentProjectId, isApiHydrated, projects, scene]);
 
   const selectedItem = useMemo(
     () => currentProject?.items.find((item) => item.id === selectedItemId) ?? null,
@@ -591,6 +641,7 @@ function App() {
       setProjects(loadedProjects);
       lastSavedSignatureRef.current = JSON.stringify(loadedProjects);
       apiHydratedRef.current = true;
+      setIsApiHydrated(true);
       saveDirtyRef.current = false;
     };
 
@@ -600,6 +651,45 @@ function App() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      const route = parseAppRoute(window.location.pathname);
+      routeSyncLockRef.current = true;
+      setScene(route.scene);
+      setCurrentProjectId(route.projectId);
+      setSelectedItemId(null);
+      setSelectedVennSetId(null);
+      setIsPlacingTextBox(false);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const nextPath = buildAppRoutePath(scene, currentProjectId);
+    if (window.location.pathname === nextPath) {
+      routeSyncLockRef.current = false;
+      return;
+    }
+
+    if (routeSyncLockRef.current) {
+      routeSyncLockRef.current = false;
+      window.history.replaceState(null, '', nextPath);
+      return;
+    }
+
+    window.history.pushState(null, '', nextPath);
+  }, [currentProjectId, scene]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {

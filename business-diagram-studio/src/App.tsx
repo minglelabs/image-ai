@@ -484,10 +484,10 @@ function getQuadrantAxisLabels(quadrant: QuadrantProjectData | undefined) {
   const legacyVerticalBottom = quadrant?.xAxisBottomName ?? '';
 
   return {
-    xLeft: (quadrant?.xAxisLeftName ?? legacyHorizontalLeft) || 'X 축',
-    xRight: (quadrant?.xAxisRightName ?? legacyHorizontalRight) || '',
-    yTop: (quadrant?.yAxisTopName ?? legacyVerticalTop) || 'Y 축',
-    yBottom: (quadrant?.yAxisBottomName ?? legacyVerticalBottom) || '',
+    xLeft: quadrant?.xAxisLeftName ?? legacyHorizontalLeft ?? '',
+    xRight: quadrant?.xAxisRightName ?? legacyHorizontalRight ?? '',
+    yTop: quadrant?.yAxisTopName ?? legacyVerticalTop ?? '',
+    yBottom: quadrant?.yAxisBottomName ?? legacyVerticalBottom ?? '',
   };
 }
 
@@ -3303,9 +3303,9 @@ function App() {
                 />
               ) : (
                 <QuadrantBackdrop
-                  xAxisLeftName={quadrantAxisLabels?.xLeft ?? 'X 축'}
+                  xAxisLeftName={quadrantAxisLabels?.xLeft ?? ''}
                   xAxisRightName={quadrantAxisLabels?.xRight ?? ''}
-                  yAxisTopName={quadrantAxisLabels?.yTop ?? 'Y 축'}
+                  yAxisTopName={quadrantAxisLabels?.yTop ?? ''}
                   yAxisBottomName={quadrantAxisLabels?.yBottom ?? ''}
                   headerTitle={quadrantHeaderTexts?.title ?? 'Competitive Quadrant Canvas'}
                   headerSubtitle={quadrantHeaderTexts?.subtitle ?? '서비스 라벨/아이콘을 사분면에 배치해 경쟁 포지셔닝을 비교하세요.'}
@@ -3548,10 +3548,10 @@ function QuadrantBackdrop({
   onCancelInlineEdit: () => void;
   editInputRef: MutableRefObject<HTMLInputElement | HTMLTextAreaElement | null>;
 }) {
-  const safeXLeft = xAxisLeftName || 'X 축';
-  const safeXRight = xAxisRightName || '';
-  const safeYTop = yAxisTopName || 'Y 축';
-  const safeYBottom = yAxisBottomName || '';
+  const safeXLeft = xAxisLeftName ?? '';
+  const safeXRight = xAxisRightName ?? '';
+  const safeYTop = yAxisTopName ?? '';
+  const safeYBottom = yAxisBottomName ?? '';
   const safeHeaderTitle = headerTitle ?? '';
   const safeHeaderSubtitle = headerSubtitle ?? '';
   const centerX = CANVAS_WIDTH / 2;

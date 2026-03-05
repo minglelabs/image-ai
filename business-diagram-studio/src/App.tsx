@@ -2515,18 +2515,6 @@ function QuadrantBackdrop({
         </text>
       ) : null}
 
-      <text x={CANVAS_WIDTH * 0.72} y={CANVAS_HEIGHT * 0.24} textAnchor="middle" fill="rgba(15,23,42,0.56)" fontSize={16}>
-        리더 그룹
-      </text>
-      <text x={CANVAS_WIDTH * 0.28} y={CANVAS_HEIGHT * 0.24} textAnchor="middle" fill="rgba(15,23,42,0.56)" fontSize={16}>
-        니치 그룹
-      </text>
-      <text x={CANVAS_WIDTH * 0.72} y={CANVAS_HEIGHT * 0.77} textAnchor="middle" fill="rgba(15,23,42,0.56)" fontSize={16}>
-        잠재 성장
-      </text>
-      <text x={CANVAS_WIDTH * 0.28} y={CANVAS_HEIGHT * 0.77} textAnchor="middle" fill="rgba(15,23,42,0.56)" fontSize={16}>
-        방어 전략
-      </text>
     </svg>
   );
 }

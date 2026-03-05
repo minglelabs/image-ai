@@ -8,6 +8,10 @@ import {
   useRef,
   useState,
 } from 'react';
+import { Button } from './components/ui/button';
+import { Input } from './components/ui/input';
+import { Label } from './components/ui/label';
+import { Textarea } from './components/ui/textarea';
 
 type ProjectType = 'venn' | 'quadrant';
 type Scene = 'home' | 'new' | 'editor';
@@ -2270,7 +2274,9 @@ function App() {
             프로젝트를 선택하면 바로 편집을 이어갈 수 있고, 신규 프로젝트에서는 Venn Diagram 또는 Competitive
             Quadrant Chart를 즉시 시작할 수 있습니다.
           </p>
-          <button className="primary-btn" onClick={() => setScene('new')}>신규 프로젝트 시작</button>
+          <Button className="primary-btn" onClick={() => setScene('new')}>
+            신규 프로젝트 시작
+          </Button>
         </div>
 
         <section className="project-list-panel">
@@ -2282,7 +2288,9 @@ function App() {
           {projects.length === 0 ? (
             <div className="empty-box">
               아직 생성된 프로젝트가 없습니다.<br />
-              <button className="ghost-btn" onClick={() => setScene('new')}>첫 프로젝트 만들기</button>
+              <Button className="ghost-btn" variant="outline" onClick={() => setScene('new')}>
+                첫 프로젝트 만들기
+              </Button>
             </div>
           ) : (
             <div className="project-grid">
@@ -2296,8 +2304,12 @@ function App() {
                     </p>
                   </div>
                   <div className="project-card-actions">
-                    <button className="primary-btn" onClick={() => openProject(project.id)}>열기</button>
-                    <button className="danger-btn" onClick={() => handleDeleteProject(project.id)}>삭제</button>
+                    <Button className="primary-btn" onClick={() => openProject(project.id)}>
+                      열기
+                    </Button>
+                    <Button className="danger-btn" variant="destructive" onClick={() => handleDeleteProject(project.id)}>
+                      삭제
+                    </Button>
                   </div>
                 </article>
               ))}
@@ -2316,8 +2328,8 @@ function App() {
           <h1>새로운 다이어그램 프로젝트 생성</h1>
           <p>프로젝트 이름을 입력하고 차트 타입을 선택해 주세요.</p>
 
-          <label className="field-label" htmlFor="project-name-input">프로젝트 이름</label>
-          <input
+          <Label className="field-label" htmlFor="project-name-input">프로젝트 이름</Label>
+          <Input
             id="project-name-input"
             className="text-input"
             value={newProjectName}
@@ -2326,26 +2338,32 @@ function App() {
           />
 
           <div className="type-grid">
-            <button
+            <Button
               className={`type-card ${newProjectType === 'venn' ? 'active' : ''}`}
+              variant="outline"
               onClick={() => setNewProjectType('venn')}
             >
               <strong>Venn Diagram</strong>
               <span>집합 이름/아이콘 + 서비스 이름/아이콘 배치</span>
-            </button>
+            </Button>
 
-            <button
+            <Button
               className={`type-card ${newProjectType === 'quadrant' ? 'active' : ''}`}
+              variant="outline"
               onClick={() => setNewProjectType('quadrant')}
             >
               <strong>Competitive Quadrant</strong>
               <span>x/y축 이름 + 서비스 이름/아이콘 배치</span>
-            </button>
+            </Button>
           </div>
 
           <div className="create-actions">
-            <button className="ghost-btn" onClick={() => setScene('home')}>메인으로</button>
-            <button className="primary-btn" onClick={handleCreateProject}>프로젝트 생성</button>
+            <Button className="ghost-btn" variant="outline" onClick={() => setScene('home')}>
+              메인으로
+            </Button>
+            <Button className="primary-btn" onClick={handleCreateProject}>
+              프로젝트 생성
+            </Button>
           </div>
         </section>
       </div>
@@ -2358,7 +2376,9 @@ function App() {
         <section className="create-panel">
           <h1>선택된 프로젝트가 없습니다.</h1>
           <p>메인으로 이동해 프로젝트를 선택해 주세요.</p>
-          <button className="primary-btn" onClick={() => setScene('home')}>메인으로 이동</button>
+          <Button className="primary-btn" onClick={() => setScene('home')}>
+            메인으로 이동
+          </Button>
         </section>
       </div>
     );
@@ -2368,8 +2388,10 @@ function App() {
     <div className="editor-shell">
       <header className="editor-header">
         <div className="header-left">
-          <button className="ghost-btn" onClick={() => setScene('home')}>메인</button>
-          <input
+          <Button className="ghost-btn" variant="outline" onClick={() => setScene('home')}>
+            메인
+          </Button>
+          <Input
             className="project-name-input"
             value={currentProject.name}
             onChange={(event) => {
@@ -2385,7 +2407,9 @@ function App() {
           </span>
         </div>
         <div className="header-right">
-          <button className="ghost-btn" onClick={() => setScene('new')}>신규</button>
+          <Button className="ghost-btn" variant="outline" onClick={() => setScene('new')}>
+            신규
+          </Button>
         </div>
       </header>
 
@@ -2394,9 +2418,9 @@ function App() {
           <section className="inspector-section">
             <h3>캔버스 첨부</h3>
             <div className="inline-actions">
-              <button className="primary-btn" onClick={startTextBoxPlacement}>
+              <Button className="primary-btn" onClick={startTextBoxPlacement}>
                 {isPlacingTextBox ? '텍스트박스 위치 선택 중' : '텍스트박스 추가'}
-              </button>
+              </Button>
               <label className="file-btn">
                 이미지 여러개 첨부
                 <input type="file" accept="image/*" multiple onChange={handleAttachImages} />
@@ -2408,13 +2432,15 @@ function App() {
             <section className="inspector-section">
               <div className="panel-title-row">
                 <h3>선택 요소 편집</h3>
-                <button className="danger-btn" onClick={() => removeItem(selectedItem.id)}>삭제</button>
+                <Button className="danger-btn" variant="destructive" onClick={() => removeItem(selectedItem.id)}>
+                  삭제
+                </Button>
               </div>
 
               {selectedItem.type === 'text' ? (
                 <>
-                  <label className="field-label" htmlFor="selected-text-content">텍스트</label>
-                  <textarea
+                  <Label className="field-label" htmlFor="selected-text-content">텍스트</Label>
+                  <Textarea
                     id="selected-text-content"
                     className="text-area"
                     value={selectedItem.text}
@@ -2427,8 +2453,8 @@ function App() {
 
                   <div className="field-grid-two">
                     <div>
-                      <label className="field-label" htmlFor="selected-text-size">폰트 크기</label>
-                      <input
+                      <Label className="field-label" htmlFor="selected-text-size">폰트 크기</Label>
+                      <Input
                         id="selected-text-size"
                         className="number-input"
                         type="number"
@@ -2449,7 +2475,7 @@ function App() {
                     </div>
 
                     <div>
-                      <label className="field-label" htmlFor="selected-text-color">텍스트 색상</label>
+                      <Label className="field-label" htmlFor="selected-text-color">텍스트 색상</Label>
                       <input
                         id="selected-text-color"
                         className="color-input"
@@ -2466,8 +2492,8 @@ function App() {
                 </>
               ) : (
                 <>
-                  <label className="field-label" htmlFor="selected-image-alt">이미지 이름/대체 텍스트</label>
-                  <input
+                  <Label className="field-label" htmlFor="selected-image-alt">이미지 이름/대체 텍스트</Label>
+                  <Input
                     id="selected-image-alt"
                     className="text-input"
                     value={selectedItem.alt}
@@ -2482,8 +2508,8 @@ function App() {
 
               <div className="field-grid-two">
                 <div>
-                  <label className="field-label" htmlFor="selected-item-x">X</label>
-                  <input
+                  <Label className="field-label" htmlFor="selected-item-x">X</Label>
+                  <Input
                     id="selected-item-x"
                     className="number-input"
                     type="number"
@@ -2502,8 +2528,8 @@ function App() {
                 </div>
 
                 <div>
-                  <label className="field-label" htmlFor="selected-item-y">Y</label>
-                  <input
+                  <Label className="field-label" htmlFor="selected-item-y">Y</Label>
+                  <Input
                     id="selected-item-y"
                     className="number-input"
                     type="number"
@@ -2524,8 +2550,8 @@ function App() {
 
               <div className="field-grid-two">
                 <div>
-                  <label className="field-label" htmlFor="selected-item-width">너비</label>
-                  <input
+                  <Label className="field-label" htmlFor="selected-item-width">너비</Label>
+                  <Input
                     id="selected-item-width"
                     className="number-input"
                     type="number"
@@ -2545,8 +2571,8 @@ function App() {
                 </div>
 
                 <div>
-                  <label className="field-label" htmlFor="selected-item-height">높이</label>
-                  <input
+                  <Label className="field-label" htmlFor="selected-item-height">높이</Label>
+                  <Input
                     id="selected-item-height"
                     className="number-input"
                     type="number"
@@ -2573,17 +2599,17 @@ function App() {
               <section className="inspector-section">
                 <div className="panel-title-row">
                   <h3>집합 정보</h3>
-                  <button className="primary-btn" onClick={addVennSet}>집합 추가</button>
+                  <Button className="primary-btn" onClick={addVennSet}>집합 추가</Button>
                 </div>
                 <p className="hint-text">
                   현재 {currentProject.venn?.sets.length ?? 0}개 / 최대 {VENN_LAYOUT_SLOTS.length}개
                 </p>
                 {currentProject.venn.sets.map((setItem, index) => (
                   <article className="row-card" key={setItem.id}>
-                    <label className="field-label" htmlFor={`set-name-${setItem.id}`}>
+                    <Label className="field-label" htmlFor={`set-name-${setItem.id}`}>
                       집합 {index + 1} 이름
-                    </label>
-                    <input
+                    </Label>
+                    <Input
                       id={`set-name-${setItem.id}`}
                       className="text-input"
                       value={setItem.name}
@@ -2597,18 +2623,19 @@ function App() {
                     </label>
 
                     {setItem.iconItemId ? (
-                      <button className="danger-btn" onClick={() => removeVennSetIcon(setItem.id)}>
+                      <Button className="danger-btn" variant="destructive" onClick={() => removeVennSetIcon(setItem.id)}>
                         집합 아이콘 제거
-                      </button>
+                      </Button>
                     ) : null}
 
-                    <button
+                    <Button
                       className="danger-btn"
+                      variant="destructive"
                       disabled={(currentProject.venn?.sets.length ?? 0) <= 1}
                       onClick={() => removeVennSet(setItem.id)}
                     >
                       집합 삭제
-                    </button>
+                    </Button>
                   </article>
                 ))}
               </section>
@@ -2616,15 +2643,15 @@ function App() {
               <section className="inspector-section">
                 <div className="panel-title-row">
                   <h3>서비스 정보</h3>
-                  <button className="primary-btn" onClick={addService}>서비스 추가</button>
+                  <Button className="primary-btn" onClick={addService}>서비스 추가</Button>
                 </div>
 
                 {currentServices.length === 0 ? <p className="hint-text">서비스를 추가해서 원 안/밖에 배치해 주세요.</p> : null}
 
                 {currentServices.map((service) => (
                   <article className="row-card" key={service.id}>
-                    <label className="field-label" htmlFor={`service-name-${service.id}`}>서비스 이름</label>
-                    <input
+                    <Label className="field-label" htmlFor={`service-name-${service.id}`}>서비스 이름</Label>
+                    <Input
                       id={`service-name-${service.id}`}
                       className="text-input"
                       value={service.name}
@@ -2638,13 +2665,13 @@ function App() {
 
                     <div className="inline-actions">
                       {service.iconItemId ? (
-                        <button className="ghost-btn" onClick={() => removeServiceIcon(service.id)}>
+                        <Button className="ghost-btn" variant="outline" onClick={() => removeServiceIcon(service.id)}>
                           아이콘 제거
-                        </button>
+                        </Button>
                       ) : null}
-                      <button className="danger-btn" onClick={() => removeService(service.id)}>
+                      <Button className="danger-btn" variant="destructive" onClick={() => removeService(service.id)}>
                         서비스 삭제
-                      </button>
+                      </Button>
                     </div>
                   </article>
                 ))}
@@ -2656,16 +2683,16 @@ function App() {
             <>
               <section className="inspector-section">
                 <h3>상단 텍스트</h3>
-                <label className="field-label" htmlFor="quadrant-header-title">차트 타이틀</label>
-                <input
+                <Label className="field-label" htmlFor="quadrant-header-title">차트 타이틀</Label>
+                <Input
                   id="quadrant-header-title"
                   className="text-input"
                   value={quadrantHeaderTexts?.title ?? ''}
                   onChange={(event) => updateQuadrantHeader('title', event.target.value)}
                 />
 
-                <label className="field-label" htmlFor="quadrant-header-subtitle">차트 설명</label>
-                <textarea
+                <Label className="field-label" htmlFor="quadrant-header-subtitle">차트 설명</Label>
+                <Textarea
                   id="quadrant-header-subtitle"
                   className="text-area"
                   value={quadrantHeaderTexts?.subtitle ?? ''}
@@ -2676,35 +2703,37 @@ function App() {
               <section className="inspector-section">
                 <div className="panel-title-row">
                   <h3>축 정보</h3>
-                  <button className="ghost-btn" onClick={swapQuadrantAxes}>X/Y 축 교체</button>
+                  <Button className="ghost-btn" variant="outline" onClick={swapQuadrantAxes}>
+                    X/Y 축 교체
+                  </Button>
                 </div>
                 <p className="hint-text">가로는 X축, 세로는 Y축으로 고정됩니다.</p>
-                <label className="field-label" htmlFor="axis-x-left-name">가로 X축(왼쪽) 이름</label>
-                <input
+                <Label className="field-label" htmlFor="axis-x-left-name">가로 X축(왼쪽) 이름</Label>
+                <Input
                   id="axis-x-left-name"
                   className="text-input"
                   value={quadrantAxisLabels?.xLeft ?? ''}
                   onChange={(event) => updateQuadrantAxis('x-left', event.target.value)}
                 />
 
-                <label className="field-label" htmlFor="axis-x-right-name">가로 X축(오른쪽) 이름</label>
-                <input
+                <Label className="field-label" htmlFor="axis-x-right-name">가로 X축(오른쪽) 이름</Label>
+                <Input
                   id="axis-x-right-name"
                   className="text-input"
                   value={quadrantAxisLabels?.xRight ?? ''}
                   onChange={(event) => updateQuadrantAxis('x-right', event.target.value)}
                 />
 
-                <label className="field-label" htmlFor="axis-y-top-name">세로 Y축(위) 이름</label>
-                <input
+                <Label className="field-label" htmlFor="axis-y-top-name">세로 Y축(위) 이름</Label>
+                <Input
                   id="axis-y-top-name"
                   className="text-input"
                   value={quadrantAxisLabels?.yTop ?? ''}
                   onChange={(event) => updateQuadrantAxis('y-top', event.target.value)}
                 />
 
-                <label className="field-label" htmlFor="axis-y-bottom-name">세로 Y축(아래) 이름</label>
-                <input
+                <Label className="field-label" htmlFor="axis-y-bottom-name">세로 Y축(아래) 이름</Label>
+                <Input
                   id="axis-y-bottom-name"
                   className="text-input"
                   value={quadrantAxisLabels?.yBottom ?? ''}
@@ -2715,7 +2744,7 @@ function App() {
               <section className="inspector-section">
                 <div className="panel-title-row">
                   <h3>서비스 정보</h3>
-                  <button className="primary-btn" onClick={addService}>서비스 추가</button>
+                  <Button className="primary-btn" onClick={addService}>서비스 추가</Button>
                 </div>
 
                 {currentServices.length === 0 ? (
@@ -2724,8 +2753,8 @@ function App() {
 
                 {currentServices.map((service) => (
                   <article className="row-card" key={service.id}>
-                    <label className="field-label" htmlFor={`service-name-${service.id}`}>서비스 이름</label>
-                    <input
+                    <Label className="field-label" htmlFor={`service-name-${service.id}`}>서비스 이름</Label>
+                    <Input
                       id={`service-name-${service.id}`}
                       className="text-input"
                       value={service.name}
@@ -2739,13 +2768,13 @@ function App() {
 
                     <div className="inline-actions">
                       {service.iconItemId ? (
-                        <button className="ghost-btn" onClick={() => removeServiceIcon(service.id)}>
+                        <Button className="ghost-btn" variant="outline" onClick={() => removeServiceIcon(service.id)}>
                           아이콘 제거
-                        </button>
+                        </Button>
                       ) : null}
-                      <button className="danger-btn" onClick={() => removeService(service.id)}>
+                      <Button className="danger-btn" variant="destructive" onClick={() => removeService(service.id)}>
                         서비스 삭제
-                      </button>
+                      </Button>
                     </div>
                   </article>
                 ))}
@@ -2809,8 +2838,9 @@ function App() {
                     height: selectedVennSetLayout.layout.radius * 2,
                   }}
                 >
-                  <button
+                  <Button
                     className="venn-set-delete-btn"
+                    variant="destructive"
                     onPointerDown={(event) => event.stopPropagation()}
                     onClick={(event) => {
                       event.stopPropagation();
@@ -2819,7 +2849,7 @@ function App() {
                     disabled={(currentProject.venn?.sets.length ?? 0) <= 1}
                   >
                     집합 삭제
-                  </button>
+                  </Button>
 
                   <div
                     className="venn-set-resize-handle"

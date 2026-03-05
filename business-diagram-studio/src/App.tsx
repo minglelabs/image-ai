@@ -61,6 +61,8 @@ interface ServiceNode {
 interface VennProjectData {
   sets: VennSet[];
   services: ServiceNode[];
+  headerTitle?: string;
+  headerSubtitle?: string;
 }
 
 interface QuadrantProjectData {
@@ -339,6 +341,8 @@ function createVennProject(name: string): DiagramProject {
     venn: {
       sets,
       services: [],
+      headerTitle: 'Venn Diagram Canvas',
+      headerSubtitle: '서비스 라벨/아이콘을 드래그해서 교집합 위치로 배치하세요.',
     },
   };
 }
@@ -458,6 +462,13 @@ function getQuadrantHeaderTexts(quadrant: QuadrantProjectData | undefined) {
   return {
     title: quadrant?.headerTitle ?? 'Competitive Quadrant Canvas',
     subtitle: quadrant?.headerSubtitle ?? '서비스 라벨/아이콘을 사분면에 배치해 경쟁 포지셔닝을 비교하세요.',
+  };
+}
+
+function getVennHeaderTexts(venn: VennProjectData | undefined) {
+  return {
+    title: venn?.headerTitle ?? 'Venn Diagram Canvas',
+    subtitle: venn?.headerSubtitle ?? '서비스 라벨/아이콘을 드래그해서 교집합 위치로 배치하세요.',
   };
 }
 
@@ -604,6 +615,14 @@ function App() {
     }
 
     return getQuadrantHeaderTexts(currentProject.quadrant);
+  }, [currentProject]);
+
+  const vennHeaderTexts = useMemo(() => {
+    if (!currentProject || currentProject.type !== 'venn') {
+      return null;
+    }
+
+    return getVennHeaderTexts(currentProject.venn);
   }, [currentProject]);
 
   useEffect(() => {
@@ -2244,6 +2263,35 @@ function App() {
     [replaceCurrentProject],
   );
 
+  const updateVennHeader = useCallback(
+    (field: 'title' | 'subtitle', value: string) => {
+      replaceCurrentProject((project) => {
+        if (project.type !== 'venn' || !project.venn) {
+          return project;
+        }
+
+        if (field === 'title') {
+          return {
+            ...project,
+            venn: {
+              ...project.venn,
+              headerTitle: value,
+            },
+          };
+        }
+
+        return {
+          ...project,
+          venn: {
+            ...project.venn,
+            headerSubtitle: value,
+          },
+        };
+      });
+    },
+    [replaceCurrentProject],
+  );
+
   const swapQuadrantAxes = useCallback(() => {
     replaceCurrentProject((project) => {
       if (project.type !== 'quadrant' || !project.quadrant) {
@@ -2600,6 +2648,26 @@ function App() {
           {currentProject.type === 'venn' && currentProject.venn ? (
             <>
               <section className="inspector-section">
+                <h3>상단 텍스트</h3>
+                <Label className="field-label" htmlFor="venn-header-title">차트 타이틀</Label>
+                <Input
+                  id="venn-header-title"
+                  className="text-input"
+                  value={vennHeaderTexts?.title ?? ''}
+                  onChange={(event) => updateVennHeader('title', event.target.value)}
+                />
+
+                <Label className="field-label" htmlFor="venn-header-subtitle">차트 설명</Label>
+                <Textarea
+                  id="venn-header-subtitle"
+                  className="text-area"
+                  value={vennHeaderTexts?.subtitle ?? ''}
+                  onChange={(event) => updateVennHeader('subtitle', event.target.value)}
+                />
+                <p className="hint-text">값을 비우면 해당 상단 텍스트는 캔버스에서 숨겨집니다.</p>
+              </section>
+
+              <section className="inspector-section">
                 <div className="panel-title-row">
                   <h3>집합 정보</h3>
                   <Button className="primary-btn" onClick={addVennSet}>집합 추가</Button>
@@ -2817,6 +2885,8 @@ function App() {
               {currentProject.type === 'venn' ? (
                 <VennBackdrop
                   sets={currentProject.venn?.sets ?? []}
+                  headerTitle={vennHeaderTexts?.title ?? 'Venn Diagram Canvas'}
+                  headerSubtitle={vennHeaderTexts?.subtitle ?? '서비스 라벨/아이콘을 드래그해서 교집합 위치로 배치하세요.'}
                   selectedSetId={selectedVennSetId}
                   onSetPointerDown={(event, setId) => beginVennSetInteraction(event, setId, 'move')}
                 />
@@ -2912,10 +2982,14 @@ function App() {
 
 function VennBackdrop({
   sets,
+  headerTitle,
+  headerSubtitle,
   selectedSetId,
   onSetPointerDown,
 }: {
   sets: VennSet[];
+  headerTitle: string;
+  headerSubtitle: string;
   selectedSetId: string | null;
   onSetPointerDown?: (event: ReactPointerEvent<SVGCircleElement>, setId: string) => void;
 }) {
@@ -2928,6 +3002,8 @@ function VennBackdrop({
     'rgba(20, 184, 166, 0.2)',
   ];
   const strokeColors = ['#ea580c', '#2563eb', '#0f766e', '#c026d3', '#ca8a04', '#0f766e'];
+  const safeHeaderTitle = headerTitle ?? '';
+  const safeHeaderSubtitle = headerSubtitle ?? '';
 
   return (
     <svg className="diagram-backdrop" viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`} aria-hidden="true">
@@ -2968,12 +3044,16 @@ function VennBackdrop({
         );
       })}
 
-      <text x={CANVAS_WIDTH / 2} y={54} textAnchor="middle" fill="#0f172a" fontSize={28} fontWeight={700}>
-        Venn Diagram Canvas
-      </text>
-      <text x={CANVAS_WIDTH / 2} y={84} textAnchor="middle" fill="rgba(15,23,42,0.68)" fontSize={16}>
-        서비스 라벨/아이콘을 드래그해서 교집합 위치로 배치하세요.
-      </text>
+      {safeHeaderTitle ? (
+        <text x={CANVAS_WIDTH / 2} y={54} textAnchor="middle" fill="#0f172a" fontSize={28} fontWeight={700}>
+          {safeHeaderTitle}
+        </text>
+      ) : null}
+      {safeHeaderSubtitle ? (
+        <text x={CANVAS_WIDTH / 2} y={84} textAnchor="middle" fill="rgba(15,23,42,0.68)" fontSize={16}>
+          {safeHeaderSubtitle}
+        </text>
+      ) : null}
     </svg>
   );
 }

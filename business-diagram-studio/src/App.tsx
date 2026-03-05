@@ -337,31 +337,15 @@ function createVennProject(name: string): DiagramProject {
 
   const seedNames = ['고객 니즈', '핵심 역량', '시장 기회'];
   const sets: VennSet[] = [];
-  const items: CanvasItem[] = [];
 
   seedNames.forEach((seedName, index) => {
-    const layout = VENN_LAYOUT_SLOTS[index] ?? VENN_LAYOUT_SLOTS[0];
-    const labelItemId = createId('item');
-
     sets.push({
       id: createId('set'),
       name: seedName,
-      labelItemId,
+      labelItemId: null,
       iconItemId: null,
       slot: index,
     });
-
-    items.push(
-      createTextItem({
-        id: labelItemId,
-        text: seedName,
-        x: layout.labelX,
-        y: layout.labelY,
-        width: 240,
-        height: 68,
-        fontSize: 30,
-      }),
-    );
   });
 
   return {
@@ -370,7 +354,7 @@ function createVennProject(name: string): DiagramProject {
     type: 'venn',
     createdAt: now,
     updatedAt: now,
-    items,
+    items: [],
     venn: {
       sets,
       services: [],
@@ -1364,7 +1348,7 @@ function App() {
             const movedDeltaX = nextCx - currentLayout.cx;
             const movedDeltaY = nextCy - currentLayout.cy;
             if (movedDeltaX !== 0 || movedDeltaY !== 0) {
-              const linkedIds = new Set([targetSet.labelItemId ?? '', targetSet.iconItemId ?? '']);
+              const linkedIds = new Set([targetSet.iconItemId ?? '']);
               nextItems = project.items.map((item) => {
                 if (!linkedIds.has(item.id)) {
                   return item;
@@ -1792,50 +1776,13 @@ function App() {
           return project;
         }
 
-        const currentSet = sets[targetIndex];
-        const nextItems = [...project.items];
-        let labelItemId = currentSet.labelItemId;
-
-        if (labelItemId) {
-          const itemIndex = nextItems.findIndex((item) => item.id === labelItemId && item.type === 'text');
-          if (itemIndex >= 0) {
-            const targetItem = nextItems[itemIndex] as CanvasTextItem;
-            nextItems[itemIndex] = {
-              ...targetItem,
-              text: nextName || `집합 ${targetIndex + 1}`,
-            };
-          } else {
-            labelItemId = null;
-          }
-        }
-
-        if (!labelItemId) {
-          const layout = getVennSetLayout(currentSet, targetIndex);
-          const freshLabelItemId = createId('item');
-          labelItemId = freshLabelItemId;
-
-          nextItems.push(
-            createTextItem({
-              id: freshLabelItemId,
-              text: nextName || `집합 ${targetIndex + 1}`,
-              x: layout.labelX,
-              y: layout.labelY,
-              width: 240,
-              height: 68,
-              fontSize: 30,
-            }),
-          );
-        }
-
         sets[targetIndex] = {
-          ...currentSet,
+          ...sets[targetIndex],
           name: nextName,
-          labelItemId,
         };
 
         return {
           ...project,
-          items: nextItems,
           venn: {
             ...project.venn,
             sets,
@@ -1890,12 +1837,6 @@ function App() {
 
         if (!iconItemId) {
           const layout = getVennSetLayout(currentSet, targetIndex);
-          const maybeLabel = currentSet.labelItemId
-            ? nextItems.find((item) => item.id === currentSet.labelItemId)
-            : null;
-
-          const iconX = maybeLabel ? maybeLabel.x + 8 : layout.iconX;
-          const iconY = maybeLabel ? maybeLabel.y + maybeLabel.height + 6 : layout.iconY;
           iconItemId = createId('item');
 
           nextItems.push(
@@ -1903,8 +1844,8 @@ function App() {
               id: iconItemId,
               src,
               alt: file.name,
-              x: iconX,
-              y: iconY,
+              x: layout.iconX,
+              y: layout.iconY,
               width: fit.width,
               height: fit.height,
             }),
@@ -1971,7 +1912,7 @@ function App() {
   );
 
   const addVennSet = useCallback(() => {
-    let addedLabelItemId: string | null = null;
+    let addedSetId: string | null = null;
     let isAdded = false;
 
     replaceCurrentProject((project) => {
@@ -1986,34 +1927,21 @@ function App() {
 
       const nextSetNumber = project.venn.sets.length + 1;
       const nextSetName = `집합 ${nextSetNumber}`;
-      const labelItemId = createId('item');
-      const layout = VENN_LAYOUT_SLOTS[nextSlot] ?? VENN_LAYOUT_SLOTS[0];
+      const setId = createId('set');
 
-      addedLabelItemId = labelItemId;
+      addedSetId = setId;
       isAdded = true;
 
       return {
         ...project,
-        items: [
-          ...project.items,
-          createTextItem({
-            id: labelItemId,
-            text: nextSetName,
-            x: layout.labelX,
-            y: layout.labelY,
-            width: 240,
-            height: 68,
-            fontSize: 30,
-          }),
-        ],
         venn: {
           ...project.venn,
           sets: [
             ...project.venn.sets,
             {
-              id: createId('set'),
+              id: setId,
               name: nextSetName,
-              labelItemId,
+              labelItemId: null,
               iconItemId: null,
               slot: nextSlot,
             },
@@ -2023,7 +1951,8 @@ function App() {
     });
 
     if (isAdded) {
-      setSelectedItemId(addedLabelItemId);
+      setSelectedItemId(null);
+      setSelectedVennSetId(addedSetId);
       setStatusMessage('집합을 추가했습니다.');
       return;
     }
@@ -2033,7 +1962,7 @@ function App() {
 
   const removeVennSet = useCallback(
     (setId: string) => {
-      let removedItemIds = new Set<string>();
+      let removedIconItemId: string | null = null;
       let removed = false;
 
       replaceCurrentProject((project) => {
@@ -2051,9 +1980,11 @@ function App() {
         }
 
         removed = true;
-        removedItemIds = new Set([targetSet.labelItemId ?? '', targetSet.iconItemId ?? '']);
+        removedIconItemId = targetSet.iconItemId ?? null;
         const nextSets = project.venn.sets.filter((setItem) => setItem.id !== setId);
-        const nextItems = project.items.filter((item) => !removedItemIds.has(item.id));
+        const nextItems = removedIconItemId
+          ? project.items.filter((item) => item.id !== removedIconItemId)
+          : project.items;
 
         return {
           ...project,
@@ -2070,7 +2001,7 @@ function App() {
         return;
       }
 
-      setSelectedItemId((previous) => (previous && removedItemIds.has(previous) ? null : previous));
+      setSelectedItemId((previous) => (removedIconItemId && previous === removedIconItemId ? null : previous));
       setSelectedVennSetId((previous) => (previous === setId ? null : previous));
       setStatusMessage('집합을 삭제했습니다.');
     },
@@ -3501,16 +3432,18 @@ function VennBackdrop({
               className="venn-set-circle"
               onPointerDown={(event) => onSetPointerDown?.(event, setItem.id)}
             />
-            <text
-              x={circle.cx}
-              y={circle.cy + circle.radius + 34}
-              textAnchor="middle"
-              fill="rgba(15,23,42,0.6)"
-              fontSize={18}
-              fontWeight={600}
-            >
-              {setItem.name || `집합 ${index + 1}`}
-            </text>
+            {setItem.name ? (
+              <text
+                x={circle.cx}
+                y={circle.cy + circle.radius + 34}
+                textAnchor="middle"
+                fill="rgba(15,23,42,0.6)"
+                fontSize={18}
+                fontWeight={600}
+              >
+                {setItem.name}
+              </text>
+            ) : null}
           </g>
         );
       })}

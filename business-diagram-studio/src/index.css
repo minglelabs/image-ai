@@ -522,6 +522,55 @@ textarea {
   cursor: nwse-resize;
 }
 
+.venn-set-circle {
+  cursor: grab;
+}
+
+.venn-set-circle:active {
+  cursor: grabbing;
+}
+
+.venn-set-outline {
+  position: absolute;
+  border: 2px dashed rgba(15, 23, 42, 0.68);
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: 60;
+}
+
+.venn-set-delete-btn {
+  position: absolute;
+  top: -34px;
+  right: -14px;
+  border: 1px solid rgba(220, 38, 38, 0.72);
+  background: #dc2626;
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.venn-set-delete-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.venn-set-resize-handle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  right: -10px;
+  bottom: -10px;
+  border-radius: 4px;
+  border: 1px solid rgba(15, 23, 42, 0.5);
+  background: #f8fafc;
+  cursor: nwse-resize;
+  pointer-events: auto;
+}
+
 @media (max-width: 1100px) {
   .editor-main {
     grid-template-columns: 1fr;

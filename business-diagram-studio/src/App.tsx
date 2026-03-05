@@ -42,6 +42,9 @@ interface VennSet {
   labelItemId: string | null;
   iconItemId: string | null;
   slot?: number;
+  cx?: number;
+  cy?: number;
+  radius?: number;
 }
 
 interface ServiceNode {
@@ -81,21 +84,26 @@ interface DiagramProject {
 
 interface DragSession {
   pointerId: number;
-  itemId: string;
+  target: 'item' | 'venn-set';
+  itemId?: string;
+  setId?: string;
   mode: 'move' | 'resize';
-  itemType: CanvasItem['type'];
+  itemType?: CanvasItem['type'];
   startClientX: number;
   startClientY: number;
   originX: number;
   originY: number;
   originWidth: number;
   originHeight: number;
+  originRadius?: number;
 }
 
 const STORAGE_KEY = 'business-diagram-studio.projects.v1';
 
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 720;
+const VENN_SET_RADIUS_MIN = 90;
+const VENN_SET_RADIUS_MAX = 320;
 
 interface VennCircleLayout {
   cx: number;
@@ -160,7 +168,13 @@ function resolveVennSetSlot(setItem: VennSet, index: number) {
 
 function getVennSetLayout(setItem: VennSet, index: number) {
   const slot = resolveVennSetSlot(setItem, index);
-  return VENN_LAYOUT_SLOTS[slot] ?? VENN_LAYOUT_SLOTS[0];
+  const base = VENN_LAYOUT_SLOTS[slot] ?? VENN_LAYOUT_SLOTS[0];
+  return {
+    ...base,
+    cx: typeof setItem.cx === 'number' ? setItem.cx : base.cx,
+    cy: typeof setItem.cy === 'number' ? setItem.cy : base.cy,
+    radius: typeof setItem.radius === 'number' ? setItem.radius : base.radius,
+  };
 }
 
 function getNextAvailableVennSlot(sets: VennSet[]) {
@@ -405,6 +419,7 @@ function App() {
   const [newProjectType, setNewProjectType] = useState<ProjectType>('venn');
   const [newProjectName, setNewProjectName] = useState('');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [selectedVennSetId, setSelectedVennSetId] = useState<string | null>(null);
   const [isPlacingTextBox, setIsPlacingTextBox] = useState(false);
   const [statusMessage, setStatusMessage] = useState('기존 프로젝트를 열거나 새 프로젝트를 만들어주세요.');
   const [canvasScale, setCanvasScale] = useState(1);
@@ -423,6 +438,24 @@ function App() {
     () => currentProject?.items.find((item) => item.id === selectedItemId) ?? null,
     [currentProject, selectedItemId],
   );
+
+  const selectedVennSetLayout = useMemo(() => {
+    if (!currentProject || currentProject.type !== 'venn' || !currentProject.venn || !selectedVennSetId) {
+      return null;
+    }
+
+    const index = currentProject.venn.sets.findIndex((setItem) => setItem.id === selectedVennSetId);
+    if (index < 0) {
+      return null;
+    }
+
+    const setItem = currentProject.venn.sets[index];
+    return {
+      setItem,
+      index,
+      layout: getVennSetLayout(setItem, index),
+    };
+  }, [currentProject, selectedVennSetId]);
 
   const currentServices = useMemo(() => {
     if (!currentProject) {
@@ -496,10 +529,12 @@ function App() {
   useEffect(() => {
     if (scene !== 'editor') {
       setIsPlacingTextBox(false);
+      setSelectedVennSetId(null);
       return;
     }
 
     setIsPlacingTextBox(false);
+    setSelectedVennSetId(null);
   }, [currentProjectId, scene]);
 
   const replaceCurrentProject = useCallback(
@@ -533,6 +568,7 @@ function App() {
     setCurrentProjectId(projectId);
     setScene('editor');
     setSelectedItemId(null);
+    setSelectedVennSetId(null);
     setStatusMessage('프로젝트를 열었습니다.');
   }, []);
 
@@ -544,6 +580,7 @@ function App() {
     setCurrentProjectId(project.id);
     setScene('editor');
     setSelectedItemId(null);
+    setSelectedVennSetId(null);
     setNewProjectName('');
     setStatusMessage('새 프로젝트를 생성했습니다.');
   }, [newProjectName, projects, newProjectType]);
@@ -556,6 +593,7 @@ function App() {
         setCurrentProjectId(null);
         setScene('home');
         setSelectedItemId(null);
+        setSelectedVennSetId(null);
       }
     },
     [currentProjectId],
@@ -657,40 +695,43 @@ function App() {
       const deltaY = (event.clientY - session.startClientY) / canvasScale;
 
       replaceCurrentProject((project) => {
-        const index = project.items.findIndex((item) => item.id === session.itemId);
-        if (index < 0) {
-          return project;
-        }
+        if (session.target === 'item') {
+          if (!session.itemId) {
+            return project;
+          }
 
-        const currentItem = project.items[index];
-        const minWidth = session.itemType === 'text' ? 120 : 48;
-        const minHeight = session.itemType === 'text' ? 52 : 48;
+          const index = project.items.findIndex((item) => item.id === session.itemId);
+          if (index < 0) {
+            return project;
+          }
 
-        let nextX = currentItem.x;
-        let nextY = currentItem.y;
-        let nextWidth = currentItem.width;
-        let nextHeight = currentItem.height;
+          const currentItem = project.items[index];
+          const minWidth = session.itemType === 'text' ? 120 : 48;
+          const minHeight = session.itemType === 'text' ? 52 : 48;
 
-        if (session.mode === 'move') {
-          nextX = clamp(session.originX + deltaX, 0, CANVAS_WIDTH - session.originWidth);
-          nextY = clamp(session.originY + deltaY, 0, CANVAS_HEIGHT - session.originHeight);
-        } else {
-          nextWidth = clamp(session.originWidth + deltaX, minWidth, CANVAS_WIDTH - session.originX);
-          nextHeight = clamp(session.originHeight + deltaY, minHeight, CANVAS_HEIGHT - session.originY);
-        }
+          let nextX = currentItem.x;
+          let nextY = currentItem.y;
+          let nextWidth = currentItem.width;
+          let nextHeight = currentItem.height;
 
-        if (
-          nextX === currentItem.x &&
-          nextY === currentItem.y &&
-          nextWidth === currentItem.width &&
-          nextHeight === currentItem.height
-        ) {
-          return project;
-        }
+          if (session.mode === 'move') {
+            nextX = clamp(session.originX + deltaX, 0, CANVAS_WIDTH - session.originWidth);
+            nextY = clamp(session.originY + deltaY, 0, CANVAS_HEIGHT - session.originHeight);
+          } else {
+            nextWidth = clamp(session.originWidth + deltaX, minWidth, CANVAS_WIDTH - session.originX);
+            nextHeight = clamp(session.originHeight + deltaY, minHeight, CANVAS_HEIGHT - session.originY);
+          }
 
-        const nextItems = [...project.items];
+          if (
+            nextX === currentItem.x &&
+            nextY === currentItem.y &&
+            nextWidth === currentItem.width &&
+            nextHeight === currentItem.height
+          ) {
+            return project;
+          }
 
-        if (currentItem.type === 'text') {
+          const nextItems = [...project.items];
           nextItems[index] = {
             ...currentItem,
             x: nextX,
@@ -698,20 +739,101 @@ function App() {
             width: nextWidth,
             height: nextHeight,
           };
-        } else {
-          nextItems[index] = {
-            ...currentItem,
-            x: nextX,
-            y: nextY,
-            width: nextWidth,
-            height: nextHeight,
+
+          return {
+            ...project,
+            items: nextItems,
           };
         }
 
-        return {
-          ...project,
-          items: nextItems,
-        };
+        if (session.target === 'venn-set') {
+          if (project.type !== 'venn' || !project.venn || !session.setId) {
+            return project;
+          }
+
+          const setIndex = project.venn.sets.findIndex((setItem) => setItem.id === session.setId);
+          if (setIndex < 0) {
+            return project;
+          }
+
+          const targetSet = project.venn.sets[setIndex];
+          const currentLayout = getVennSetLayout(targetSet, setIndex);
+          const nextSets = [...project.venn.sets];
+          let nextItems = project.items;
+
+          let nextCx = currentLayout.cx;
+          let nextCy = currentLayout.cy;
+          let nextRadius = currentLayout.radius;
+
+          if (session.mode === 'move') {
+            const sessionRadius = clamp(
+              session.originRadius ?? currentLayout.radius,
+              VENN_SET_RADIUS_MIN,
+              VENN_SET_RADIUS_MAX,
+            );
+            nextCx = clamp(session.originX + deltaX, sessionRadius, CANVAS_WIDTH - sessionRadius);
+            nextCy = clamp(session.originY + deltaY, sessionRadius, CANVAS_HEIGHT - sessionRadius);
+            nextRadius = sessionRadius;
+
+            const movedDeltaX = nextCx - currentLayout.cx;
+            const movedDeltaY = nextCy - currentLayout.cy;
+            if (movedDeltaX !== 0 || movedDeltaY !== 0) {
+              const linkedIds = new Set([targetSet.labelItemId ?? '', targetSet.iconItemId ?? '']);
+              nextItems = project.items.map((item) => {
+                if (!linkedIds.has(item.id)) {
+                  return item;
+                }
+
+                return {
+                  ...item,
+                  x: clamp(item.x + movedDeltaX, 0, CANVAS_WIDTH - item.width),
+                  y: clamp(item.y + movedDeltaY, 0, CANVAS_HEIGHT - item.height),
+                };
+              });
+            }
+          } else {
+            const baseRadius = session.originRadius ?? currentLayout.radius;
+            const rawRadius = baseRadius + Math.max(deltaX, deltaY);
+            const maxAllowedByCanvas = Math.min(
+              VENN_SET_RADIUS_MAX,
+              session.originX,
+              CANVAS_WIDTH - session.originX,
+              session.originY,
+              CANVAS_HEIGHT - session.originY,
+            );
+            const cappedMax = Math.max(VENN_SET_RADIUS_MIN, maxAllowedByCanvas);
+            nextRadius = clamp(rawRadius, VENN_SET_RADIUS_MIN, cappedMax);
+            nextCx = session.originX;
+            nextCy = session.originY;
+          }
+
+          if (
+            nextCx === currentLayout.cx &&
+            nextCy === currentLayout.cy &&
+            nextRadius === currentLayout.radius &&
+            nextItems === project.items
+          ) {
+            return project;
+          }
+
+          nextSets[setIndex] = {
+            ...targetSet,
+            cx: nextCx,
+            cy: nextCy,
+            radius: nextRadius,
+          };
+
+          return {
+            ...project,
+            items: nextItems,
+            venn: {
+              ...project.venn,
+              sets: nextSets,
+            },
+          };
+        }
+
+        return project;
       });
     };
 
@@ -739,8 +861,10 @@ function App() {
     event.preventDefault();
     event.stopPropagation();
     setSelectedItemId(item.id);
+    setSelectedVennSetId(null);
 
     dragSessionRef.current = {
+      target: 'item',
       pointerId: event.pointerId,
       itemId: item.id,
       mode,
@@ -753,6 +877,46 @@ function App() {
       originHeight: item.height,
     };
   }, []);
+
+  const beginVennSetInteraction = useCallback(
+    (event: ReactPointerEvent<SVGCircleElement | HTMLDivElement>, setId: string, mode: 'move' | 'resize') => {
+      if (isPlacingTextBox) {
+        return;
+      }
+
+      if (!currentProject || currentProject.type !== 'venn' || !currentProject.venn) {
+        return;
+      }
+
+      const setIndex = currentProject.venn.sets.findIndex((setItem) => setItem.id === setId);
+      if (setIndex < 0) {
+        return;
+      }
+
+      const setItem = currentProject.venn.sets[setIndex];
+      const layout = getVennSetLayout(setItem, setIndex);
+
+      event.preventDefault();
+      event.stopPropagation();
+      setSelectedItemId(null);
+      setSelectedVennSetId(setId);
+
+      dragSessionRef.current = {
+        target: 'venn-set',
+        pointerId: event.pointerId,
+        setId,
+        mode,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        originX: layout.cx,
+        originY: layout.cy,
+        originWidth: 0,
+        originHeight: 0,
+        originRadius: layout.radius,
+      };
+    },
+    [currentProject, isPlacingTextBox],
+  );
 
   const addTextBoxAt = useCallback((point: { x: number; y: number }) => {
     const id = createId('item');
@@ -778,6 +942,7 @@ function App() {
     }));
 
     setSelectedItemId(id);
+    setSelectedVennSetId(null);
     setIsPlacingTextBox(false);
     setStatusMessage('텍스트 박스를 추가했습니다.');
   }, [replaceCurrentProject]);
@@ -785,6 +950,7 @@ function App() {
   const startTextBoxPlacement = useCallback(() => {
     setIsPlacingTextBox(true);
     setSelectedItemId(null);
+    setSelectedVennSetId(null);
     setStatusMessage('캔버스를 클릭해 텍스트 박스를 배치해 주세요.');
   }, []);
 
@@ -802,6 +968,7 @@ function App() {
       }
 
       setSelectedItemId(null);
+      setSelectedVennSetId(null);
     },
     [addTextBoxAt, canvasScale, isPlacingTextBox],
   );
@@ -1278,10 +1445,27 @@ function App() {
       }
 
       setSelectedItemId((previous) => (previous && removedItemIds.has(previous) ? null : previous));
+      setSelectedVennSetId((previous) => (previous === setId ? null : previous));
       setStatusMessage('집합을 삭제했습니다.');
     },
     [replaceCurrentProject],
   );
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!selectedVennSetId || selectedItemId || isEditableTarget(event.target)) {
+        return;
+      }
+
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault();
+        removeVennSet(selectedVennSetId);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [removeVennSet, selectedItemId, selectedVennSetId]);
 
   const addService = useCallback(() => {
     const labelItemId = createId('item');
@@ -2366,7 +2550,11 @@ function App() {
               onDrop={(event) => void handleCanvasDrop(event)}
             >
               {currentProject.type === 'venn' ? (
-                <VennBackdrop sets={currentProject.venn?.sets ?? []} />
+                <VennBackdrop
+                  sets={currentProject.venn?.sets ?? []}
+                  selectedSetId={selectedVennSetId}
+                  onSetPointerDown={(event, setId) => beginVennSetInteraction(event, setId, 'move')}
+                />
               ) : (
                 <QuadrantBackdrop
                   xAxisBottomName={quadrantAxisLabels?.xBottom ?? 'X 축'}
@@ -2377,6 +2565,35 @@ function App() {
                   headerSubtitle={quadrantHeaderTexts?.subtitle ?? '서비스 라벨/아이콘을 사분면에 배치해 경쟁 포지셔닝을 비교하세요.'}
                 />
               )}
+
+              {currentProject.type === 'venn' && selectedVennSetLayout ? (
+                <div
+                  className="venn-set-outline"
+                  style={{
+                    left: selectedVennSetLayout.layout.cx - selectedVennSetLayout.layout.radius,
+                    top: selectedVennSetLayout.layout.cy - selectedVennSetLayout.layout.radius,
+                    width: selectedVennSetLayout.layout.radius * 2,
+                    height: selectedVennSetLayout.layout.radius * 2,
+                  }}
+                >
+                  <button
+                    className="venn-set-delete-btn"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      removeVennSet(selectedVennSetLayout.setItem.id);
+                    }}
+                    disabled={(currentProject.venn?.sets.length ?? 0) <= 1}
+                  >
+                    집합 삭제
+                  </button>
+
+                  <div
+                    className="venn-set-resize-handle"
+                    onPointerDown={(event) => beginVennSetInteraction(event, selectedVennSetLayout.setItem.id, 'resize')}
+                  />
+                </div>
+              ) : null}
 
               {currentProject.items.map((item, index) => (
                 <div
@@ -2425,7 +2642,15 @@ function App() {
   );
 }
 
-function VennBackdrop({ sets }: { sets: VennSet[] }) {
+function VennBackdrop({
+  sets,
+  selectedSetId,
+  onSetPointerDown,
+}: {
+  sets: VennSet[];
+  selectedSetId: string | null;
+  onSetPointerDown?: (event: ReactPointerEvent<SVGCircleElement>, setId: string) => void;
+}) {
   const fillColors = [
     'rgba(249, 115, 22, 0.24)',
     'rgba(59, 130, 246, 0.24)',
@@ -2456,8 +2681,10 @@ function VennBackdrop({ sets }: { sets: VennSet[] }) {
               cy={circle.cy}
               r={circle.radius}
               fill={fillColors[index % fillColors.length] ?? 'rgba(71,85,105,0.24)'}
-              stroke={strokeColors[index % strokeColors.length] ?? '#334155'}
-              strokeWidth={2.6}
+              stroke={selectedSetId === setItem.id ? '#0f172a' : strokeColors[index % strokeColors.length] ?? '#334155'}
+              strokeWidth={selectedSetId === setItem.id ? 4 : 2.6}
+              className="venn-set-circle"
+              onPointerDown={(event) => onSetPointerDown?.(event, setItem.id)}
             />
             <text
               x={circle.cx}

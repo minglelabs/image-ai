@@ -211,6 +211,17 @@ function isEditableTarget(target: EventTarget | null) {
   return target.isContentEditable || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
 }
 
+function blurActiveEditableElement() {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  const active = document.activeElement;
+  if (active instanceof HTMLElement && isEditableTarget(active)) {
+    active.blur();
+  }
+}
+
 function readFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -1160,6 +1171,7 @@ function App() {
       return;
     }
 
+    blurActiveEditableElement();
     event.preventDefault();
     event.stopPropagation();
     setSelectedItemId(item.id);
@@ -1201,6 +1213,7 @@ function App() {
       const setItem = currentProject.venn.sets[setIndex];
       const layout = getVennSetLayout(setItem, setIndex);
 
+      blurActiveEditableElement();
       event.preventDefault();
       event.stopPropagation();
       setSelectedItemId(null);

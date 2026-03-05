@@ -2964,6 +2964,9 @@ function QuadrantBackdrop({
   const safeYBottom = yAxisBottomName || '';
   const safeHeaderTitle = headerTitle ?? '';
   const safeHeaderSubtitle = headerSubtitle ?? '';
+  const headerTitleY = 36;
+  const headerSubtitleY = 62;
+  const yTopAxisLabelY = 148;
 
   return (
     <svg className="diagram-backdrop" viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`} aria-hidden="true">
@@ -2995,7 +2998,7 @@ function QuadrantBackdrop({
         </text>
       ) : null}
 
-      <text x={CANVAS_WIDTH / 2 + 14} y={108} textAnchor="start" fill="#0f172a" fontSize={18} fontWeight={700}>
+      <text x={CANVAS_WIDTH / 2 + 14} y={yTopAxisLabelY} textAnchor="start" fill="#0f172a" fontSize={18} fontWeight={700}>
         {safeYTop}
       </text>
 
@@ -3006,12 +3009,12 @@ function QuadrantBackdrop({
       ) : null}
 
       {safeHeaderTitle ? (
-        <text x={CANVAS_WIDTH / 2} y={52} textAnchor="middle" fill="#0f172a" fontSize={28} fontWeight={700}>
+        <text x={CANVAS_WIDTH / 2} y={headerTitleY} textAnchor="middle" fill="#0f172a" fontSize={28} fontWeight={700}>
           {safeHeaderTitle}
         </text>
       ) : null}
       {safeHeaderSubtitle ? (
-        <text x={CANVAS_WIDTH / 2} y={80} textAnchor="middle" fill="rgba(15,23,42,0.68)" fontSize={16}>
+        <text x={CANVAS_WIDTH / 2} y={headerSubtitleY} textAnchor="middle" fill="rgba(15,23,42,0.68)" fontSize={16}>
           {safeHeaderSubtitle}
         </text>
       ) : null}

@@ -741,8 +741,11 @@ function App() {
     }
 
     const updateScale = () => {
-      const width = node.clientWidth;
-      const nextScale = clamp((width - 20) / CANVAS_WIDTH, 0.34, 1);
+      const availableWidth = Math.max(node.clientWidth - 28, 1);
+      const availableHeight = Math.max(node.clientHeight - 28, 1);
+      const widthScale = availableWidth / CANVAS_WIDTH;
+      const heightScale = availableHeight / CANVAS_HEIGHT;
+      const nextScale = clamp(Math.min(widthScale, heightScale), 0.34, 1);
       setCanvasScale(nextScale);
     };
 
@@ -752,7 +755,7 @@ function App() {
     observer.observe(node);
 
     return () => observer.disconnect();
-  }, [scene, currentProjectId]);
+  }, [scene, currentProject?.type, currentProjectId]);
 
   useEffect(() => {
     if (scene === 'editor' && currentProject?.type === 'quadrant') {

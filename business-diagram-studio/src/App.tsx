@@ -60,6 +60,8 @@ interface QuadrantProjectData {
   xAxisTopName: string;
   yAxisLeftName: string;
   yAxisRightName: string;
+  headerTitle?: string;
+  headerSubtitle?: string;
   xAxisName?: string;
   yAxisName?: string;
   services: ServiceNode[];
@@ -331,6 +333,8 @@ function createQuadrantProject(name: string): DiagramProject {
       xAxisTopName: '',
       yAxisLeftName: '비용 효율성',
       yAxisRightName: '',
+      headerTitle: 'Competitive Quadrant Canvas',
+      headerSubtitle: '서비스 라벨/아이콘을 사분면에 배치해 경쟁 포지셔닝을 비교하세요.',
       services: [],
     },
   };
@@ -386,6 +390,13 @@ function getQuadrantAxisLabels(quadrant: QuadrantProjectData | undefined) {
   };
 }
 
+function getQuadrantHeaderTexts(quadrant: QuadrantProjectData | undefined) {
+  return {
+    title: quadrant?.headerTitle ?? 'Competitive Quadrant Canvas',
+    subtitle: quadrant?.headerSubtitle ?? '서비스 라벨/아이콘을 사분면에 배치해 경쟁 포지셔닝을 비교하세요.',
+  };
+}
+
 function App() {
   const [projects, setProjects] = useState<DiagramProject[]>(() => loadProjectsFromStorage());
   const [scene, setScene] = useState<Scene>('home');
@@ -427,6 +438,14 @@ function App() {
     }
 
     return getQuadrantAxisLabels(currentProject.quadrant);
+  }, [currentProject]);
+
+  const quadrantHeaderTexts = useMemo(() => {
+    if (!currentProject || currentProject.type !== 'quadrant') {
+      return null;
+    }
+
+    return getQuadrantHeaderTexts(currentProject.quadrant);
   }, [currentProject]);
 
   useEffect(() => {
@@ -1598,6 +1617,35 @@ function App() {
     [replaceCurrentProject],
   );
 
+  const updateQuadrantHeader = useCallback(
+    (field: 'title' | 'subtitle', value: string) => {
+      replaceCurrentProject((project) => {
+        if (project.type !== 'quadrant' || !project.quadrant) {
+          return project;
+        }
+
+        if (field === 'title') {
+          return {
+            ...project,
+            quadrant: {
+              ...project.quadrant,
+              headerTitle: value,
+            },
+          };
+        }
+
+        return {
+          ...project,
+          quadrant: {
+            ...project.quadrant,
+            headerSubtitle: value,
+          },
+        };
+      });
+    },
+    [replaceCurrentProject],
+  );
+
   const swapQuadrantAxes = useCallback(() => {
     replaceCurrentProject((project) => {
       if (project.type !== 'quadrant' || !project.quadrant) {
@@ -2014,6 +2062,25 @@ function App() {
           {currentProject.type === 'quadrant' && currentProject.quadrant ? (
             <>
               <section className="inspector-section">
+                <h3>상단 텍스트</h3>
+                <label className="field-label" htmlFor="quadrant-header-title">차트 타이틀</label>
+                <input
+                  id="quadrant-header-title"
+                  className="text-input"
+                  value={quadrantHeaderTexts?.title ?? ''}
+                  onChange={(event) => updateQuadrantHeader('title', event.target.value)}
+                />
+
+                <label className="field-label" htmlFor="quadrant-header-subtitle">차트 설명</label>
+                <textarea
+                  id="quadrant-header-subtitle"
+                  className="text-area"
+                  value={quadrantHeaderTexts?.subtitle ?? ''}
+                  onChange={(event) => updateQuadrantHeader('subtitle', event.target.value)}
+                />
+              </section>
+
+              <section className="inspector-section">
                 <div className="panel-title-row">
                   <h3>축 정보</h3>
                   <button className="ghost-btn" onClick={swapQuadrantAxes}>X/Y 축 교체</button>
@@ -2120,6 +2187,8 @@ function App() {
                   xAxisTopName={quadrantAxisLabels?.xTop ?? ''}
                   yAxisLeftName={quadrantAxisLabels?.yLeft ?? 'Y 축'}
                   yAxisRightName={quadrantAxisLabels?.yRight ?? ''}
+                  headerTitle={quadrantHeaderTexts?.title ?? 'Competitive Quadrant Canvas'}
+                  headerSubtitle={quadrantHeaderTexts?.subtitle ?? '서비스 라벨/아이콘을 사분면에 배치해 경쟁 포지셔닝을 비교하세요.'}
                 />
               )}
 
@@ -2233,16 +2302,22 @@ function QuadrantBackdrop({
   xAxisTopName,
   yAxisLeftName,
   yAxisRightName,
+  headerTitle,
+  headerSubtitle,
 }: {
   xAxisBottomName: string;
   xAxisTopName: string;
   yAxisLeftName: string;
   yAxisRightName: string;
+  headerTitle: string;
+  headerSubtitle: string;
 }) {
   const safeXBottom = xAxisBottomName || 'X 축';
   const safeXTop = xAxisTopName || '';
   const safeYLeft = yAxisLeftName || 'Y 축';
   const safeYRight = yAxisRightName || '';
+  const safeHeaderTitle = headerTitle ?? '';
+  const safeHeaderSubtitle = headerSubtitle ?? '';
 
   return (
     <svg className="diagram-backdrop" viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`} aria-hidden="true">
@@ -2288,12 +2363,16 @@ function QuadrantBackdrop({
         </g>
       ) : null}
 
-      <text x={CANVAS_WIDTH / 2} y={52} textAnchor="middle" fill="#0f172a" fontSize={28} fontWeight={700}>
-        Competitive Quadrant Canvas
-      </text>
-      <text x={CANVAS_WIDTH / 2} y={80} textAnchor="middle" fill="rgba(15,23,42,0.68)" fontSize={16}>
-        서비스 라벨/아이콘을 사분면에 배치해 경쟁 포지셔닝을 비교하세요.
-      </text>
+      {safeHeaderTitle ? (
+        <text x={CANVAS_WIDTH / 2} y={52} textAnchor="middle" fill="#0f172a" fontSize={28} fontWeight={700}>
+          {safeHeaderTitle}
+        </text>
+      ) : null}
+      {safeHeaderSubtitle ? (
+        <text x={CANVAS_WIDTH / 2} y={80} textAnchor="middle" fill="rgba(15,23,42,0.68)" fontSize={16}>
+          {safeHeaderSubtitle}
+        </text>
+      ) : null}
 
       <text x={CANVAS_WIDTH * 0.72} y={CANVAS_HEIGHT * 0.24} textAnchor="middle" fill="rgba(15,23,42,0.56)" fontSize={16}>
         리더 그룹

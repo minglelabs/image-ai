@@ -114,6 +114,8 @@ const PROJECT_AUTOSAVE_INTERVAL_MS = 100;
 
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 720;
+const TEXT_ITEM_MIN_WIDTH = 48;
+const TEXT_ITEM_MIN_HEIGHT = 52;
 const VENN_SET_RADIUS_MIN = 90;
 const VENN_SET_RADIUS_MAX = 320;
 
@@ -1002,8 +1004,8 @@ function App() {
           }
 
           const currentItem = project.items[index];
-          const minWidth = session.itemType === 'text' ? 120 : 48;
-          const minHeight = session.itemType === 'text' ? 52 : 48;
+          const minWidth = session.itemType === 'text' ? TEXT_ITEM_MIN_WIDTH : 48;
+          const minHeight = session.itemType === 'text' ? TEXT_ITEM_MIN_HEIGHT : 48;
 
           let nextX = currentItem.x;
           let nextY = currentItem.y;
@@ -2663,7 +2665,7 @@ function App() {
 
                       updateItem(selectedItem.id, (item) => ({
                         ...item,
-                        width: clamp(value, item.type === 'text' ? 120 : 48, CANVAS_WIDTH - item.x),
+                        width: clamp(value, item.type === 'text' ? TEXT_ITEM_MIN_WIDTH : 48, CANVAS_WIDTH - item.x),
                       }));
                     }}
                   />
@@ -2684,7 +2686,7 @@ function App() {
 
                       updateItem(selectedItem.id, (item) => ({
                         ...item,
-                        height: clamp(value, item.type === 'text' ? 52 : 48, CANVAS_HEIGHT - item.y),
+                        height: clamp(value, item.type === 'text' ? TEXT_ITEM_MIN_HEIGHT : 48, CANVAS_HEIGHT - item.y),
                       }));
                     }}
                   />

@@ -728,7 +728,8 @@ function App() {
   useEffect(() => {
     projectsRef.current = projects;
 
-    if (typeof window !== 'undefined') {
+    // Prevent wiping existing local backup with the initial empty state before hydration finishes.
+    if (apiHydratedRef.current && typeof window !== 'undefined') {
       try {
         window.localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
       } catch {

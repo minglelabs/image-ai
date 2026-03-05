@@ -1171,7 +1171,10 @@ function App() {
       }
 
       const key = event.key.toLowerCase();
-      if (key === 'z') {
+      const isZ = key === 'z' || event.code === 'KeyZ';
+      const isY = key === 'y' || event.code === 'KeyY';
+
+      if (isZ) {
         event.preventDefault();
         if (event.shiftKey) {
           redoCurrentProject();
@@ -1182,7 +1185,7 @@ function App() {
         return;
       }
 
-      if (key === 'y') {
+      if (isY) {
         event.preventDefault();
         redoCurrentProject();
       }

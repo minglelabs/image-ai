@@ -1,6 +1,8 @@
 import {
   type ChangeEvent,
   type DragEvent as ReactDragEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MutableRefObject,
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
@@ -15,6 +17,7 @@ import { Textarea } from './components/ui/textarea';
 
 type ProjectType = 'venn' | 'quadrant';
 type Scene = 'home' | 'new' | 'editor';
+type QuadrantInlineField = 'header-title' | 'header-subtitle' | 'x-left' | 'x-right' | 'y-top' | 'y-bottom';
 
 type CanvasItem = CanvasTextItem | CanvasImageItem;
 
@@ -558,6 +561,8 @@ function App() {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedVennSetId, setSelectedVennSetId] = useState<string | null>(null);
   const [editingTextItemId, setEditingTextItemId] = useState<string | null>(null);
+  const [editingQuadrantField, setEditingQuadrantField] = useState<QuadrantInlineField | null>(null);
+  const [editingQuadrantDraft, setEditingQuadrantDraft] = useState('');
   const [isPlacingTextBox, setIsPlacingTextBox] = useState(false);
   const [statusMessage, setStatusMessage] = useState('기존 프로젝트를 열거나 새 프로젝트를 만들어주세요.');
   const [canvasScale, setCanvasScale] = useState(1);
@@ -565,6 +570,7 @@ function App() {
 
   const canvasViewportRef = useRef<HTMLDivElement | null>(null);
   const textEditorRef = useRef<HTMLTextAreaElement | null>(null);
+  const quadrantEditInputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
   const dragSessionRef = useRef<DragSession | null>(null);
   const canvasDropDepthRef = useRef(0);
   const apiHydratedRef = useRef(false);
@@ -597,6 +603,9 @@ function App() {
     setScene('home');
     setSelectedItemId(null);
     setSelectedVennSetId(null);
+    setEditingTextItemId(null);
+    setEditingQuadrantField(null);
+    setEditingQuadrantDraft('');
     setStatusMessage('프로젝트 경로를 찾을 수 없어 메인으로 이동했습니다.');
   }, [currentProjectId, isApiHydrated, projects, scene]);
 
@@ -635,6 +644,32 @@ function App() {
       setEditingTextItemId(null);
     }
   }, [currentProject, editingTextItemId]);
+
+  useEffect(() => {
+    if (!editingQuadrantField) {
+      return;
+    }
+
+    const node = quadrantEditInputRef.current;
+    if (!node) {
+      return;
+    }
+
+    node.focus();
+    const cursor = node.value.length;
+    if (typeof node.setSelectionRange === 'function') {
+      node.setSelectionRange(cursor, cursor);
+    }
+  }, [editingQuadrantField]);
+
+  useEffect(() => {
+    if (scene === 'editor' && currentProject?.type === 'quadrant') {
+      return;
+    }
+
+    setEditingQuadrantField(null);
+    setEditingQuadrantDraft('');
+  }, [currentProject?.type, scene]);
 
   const selectedVennSetLayout = useMemo(() => {
     if (!currentProject || currentProject.type !== 'venn' || !currentProject.venn || !selectedVennSetId) {
@@ -752,6 +787,9 @@ function App() {
       setCurrentProjectId(route.projectId);
       setSelectedItemId(null);
       setSelectedVennSetId(null);
+      setEditingTextItemId(null);
+      setEditingQuadrantField(null);
+      setEditingQuadrantDraft('');
       setIsPlacingTextBox(false);
     };
 
@@ -854,6 +892,9 @@ function App() {
     if (scene !== 'editor') {
       setIsPlacingTextBox(false);
       setSelectedVennSetId(null);
+      setEditingTextItemId(null);
+      setEditingQuadrantField(null);
+      setEditingQuadrantDraft('');
       return;
     }
 
@@ -965,6 +1006,8 @@ function App() {
     setSelectedItemId(null);
     setSelectedVennSetId(null);
     setEditingTextItemId(null);
+    setEditingQuadrantField(null);
+    setEditingQuadrantDraft('');
     setStatusMessage('프로젝트를 열었습니다.');
   }, []);
 
@@ -978,6 +1021,8 @@ function App() {
     setSelectedItemId(null);
     setSelectedVennSetId(null);
     setEditingTextItemId(null);
+    setEditingQuadrantField(null);
+    setEditingQuadrantDraft('');
     setNewProjectName('');
     setStatusMessage('새 프로젝트를 생성했습니다.');
   }, [newProjectName, projects, newProjectType]);
@@ -992,6 +1037,8 @@ function App() {
         setSelectedItemId(null);
         setSelectedVennSetId(null);
         setEditingTextItemId(null);
+        setEditingQuadrantField(null);
+        setEditingQuadrantDraft('');
       }
     },
     [currentProjectId],
@@ -1072,6 +1119,8 @@ function App() {
     setSelectedItemId(null);
     setSelectedVennSetId(null);
     setEditingTextItemId(null);
+    setEditingQuadrantField(null);
+    setEditingQuadrantDraft('');
     setIsPlacingTextBox(false);
   }, []);
 
@@ -1410,6 +1459,8 @@ function App() {
     blurActiveEditableElement();
     event.preventDefault();
     event.stopPropagation();
+    setEditingQuadrantField(null);
+    setEditingQuadrantDraft('');
     setSelectedItemId(item.id);
     setSelectedVennSetId(null);
     if (item.type !== 'text' || mode === 'resize') {
@@ -1453,6 +1504,8 @@ function App() {
       blurActiveEditableElement();
       event.preventDefault();
       event.stopPropagation();
+      setEditingQuadrantField(null);
+      setEditingQuadrantDraft('');
       setSelectedItemId(null);
       setSelectedVennSetId(setId);
       setEditingTextItemId(null);
@@ -1509,6 +1562,8 @@ function App() {
     setSelectedItemId(null);
     setSelectedVennSetId(null);
     setEditingTextItemId(null);
+    setEditingQuadrantField(null);
+    setEditingQuadrantDraft('');
     setStatusMessage('캔버스를 클릭해 텍스트 박스를 배치해 주세요.');
   }, []);
 
@@ -1528,6 +1583,8 @@ function App() {
       setSelectedItemId(null);
       setSelectedVennSetId(null);
       setEditingTextItemId(null);
+      setEditingQuadrantField(null);
+      setEditingQuadrantDraft('');
     },
     [addTextBoxAt, canvasScale, isPlacingTextBox],
   );
@@ -2493,6 +2550,9 @@ function App() {
         }
 
         if (axis === 'x-left') {
+          if (project.quadrant.xAxisLeftName === value) {
+            return project;
+          }
           return {
             ...project,
             quadrant: {
@@ -2503,6 +2563,9 @@ function App() {
         }
 
         if (axis === 'x-right') {
+          if (project.quadrant.xAxisRightName === value) {
+            return project;
+          }
           return {
             ...project,
             quadrant: {
@@ -2513,6 +2576,9 @@ function App() {
         }
 
         if (axis === 'y-top') {
+          if (project.quadrant.yAxisTopName === value) {
+            return project;
+          }
           return {
             ...project,
             quadrant: {
@@ -2522,6 +2588,9 @@ function App() {
           };
         }
 
+        if (project.quadrant.yAxisBottomName === value) {
+          return project;
+        }
         return {
           ...project,
           quadrant: {
@@ -2542,6 +2611,9 @@ function App() {
         }
 
         if (field === 'title') {
+          if ((project.quadrant.headerTitle ?? '') === value) {
+            return project;
+          }
           return {
             ...project,
             quadrant: {
@@ -2551,6 +2623,9 @@ function App() {
           };
         }
 
+        if ((project.quadrant.headerSubtitle ?? '') === value) {
+          return project;
+        }
         return {
           ...project,
           quadrant: {
@@ -2562,6 +2637,42 @@ function App() {
     },
     [replaceCurrentProject],
   );
+
+  const startQuadrantInlineEdit = useCallback((field: QuadrantInlineField, value: string) => {
+    setEditingQuadrantField(field);
+    setEditingQuadrantDraft(value);
+    setIsPlacingTextBox(false);
+    setEditingTextItemId(null);
+  }, []);
+
+  const cancelQuadrantInlineEdit = useCallback(() => {
+    setEditingQuadrantField(null);
+    setEditingQuadrantDraft('');
+  }, []);
+
+  const commitQuadrantInlineEdit = useCallback(() => {
+    if (!editingQuadrantField) {
+      return;
+    }
+
+    const nextValue = editingQuadrantDraft;
+    if (editingQuadrantField === 'header-title') {
+      updateQuadrantHeader('title', nextValue);
+    } else if (editingQuadrantField === 'header-subtitle') {
+      updateQuadrantHeader('subtitle', nextValue);
+    } else if (editingQuadrantField === 'x-left') {
+      updateQuadrantAxis('x-left', nextValue);
+    } else if (editingQuadrantField === 'x-right') {
+      updateQuadrantAxis('x-right', nextValue);
+    } else if (editingQuadrantField === 'y-top') {
+      updateQuadrantAxis('y-top', nextValue);
+    } else if (editingQuadrantField === 'y-bottom') {
+      updateQuadrantAxis('y-bottom', nextValue);
+    }
+
+    setEditingQuadrantField(null);
+    setEditingQuadrantDraft('');
+  }, [editingQuadrantDraft, editingQuadrantField, updateQuadrantAxis, updateQuadrantHeader]);
 
   const updateVennHeader = useCallback(
     (field: 'title' | 'subtitle', value: string) => {
@@ -3198,6 +3309,13 @@ function App() {
                   yAxisBottomName={quadrantAxisLabels?.yBottom ?? ''}
                   headerTitle={quadrantHeaderTexts?.title ?? 'Competitive Quadrant Canvas'}
                   headerSubtitle={quadrantHeaderTexts?.subtitle ?? '서비스 라벨/아이콘을 사분면에 배치해 경쟁 포지셔닝을 비교하세요.'}
+                  editingField={editingQuadrantField}
+                  editingValue={editingQuadrantDraft}
+                  onEditingValueChange={setEditingQuadrantDraft}
+                  onStartInlineEdit={startQuadrantInlineEdit}
+                  onCommitInlineEdit={commitQuadrantInlineEdit}
+                  onCancelInlineEdit={cancelQuadrantInlineEdit}
+                  editInputRef={quadrantEditInputRef}
                 />
               )}
 
@@ -3408,6 +3526,13 @@ function QuadrantBackdrop({
   yAxisBottomName,
   headerTitle,
   headerSubtitle,
+  editingField,
+  editingValue,
+  onEditingValueChange,
+  onStartInlineEdit,
+  onCommitInlineEdit,
+  onCancelInlineEdit,
+  editInputRef,
 }: {
   xAxisLeftName: string;
   xAxisRightName: string;
@@ -3415,6 +3540,13 @@ function QuadrantBackdrop({
   yAxisBottomName: string;
   headerTitle: string;
   headerSubtitle: string;
+  editingField: QuadrantInlineField | null;
+  editingValue: string;
+  onEditingValueChange: (value: string) => void;
+  onStartInlineEdit: (field: QuadrantInlineField, value: string) => void;
+  onCommitInlineEdit: () => void;
+  onCancelInlineEdit: () => void;
+  editInputRef: MutableRefObject<HTMLInputElement | HTMLTextAreaElement | null>;
 }) {
   const safeXLeft = xAxisLeftName || 'X 축';
   const safeXRight = xAxisRightName || '';
@@ -3435,6 +3567,91 @@ function QuadrantBackdrop({
   const yTopAxisLabelY = 86;
   const yBottomAxisLabelY = CANVAS_HEIGHT - 22;
 
+  const handleEditorKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLInputElement | HTMLTextAreaElement>, multiline: boolean) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCancelInlineEdit();
+        return;
+      }
+
+      if (!multiline && event.key === 'Enter') {
+        event.preventDefault();
+        onCommitInlineEdit();
+        return;
+      }
+
+      if (multiline && event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        onCommitInlineEdit();
+      }
+    },
+    [onCancelInlineEdit, onCommitInlineEdit],
+  );
+
+  const renderInlineEditor = useCallback(
+    (
+      field: QuadrantInlineField,
+      x: number,
+      y: number,
+      width: number,
+      height: number,
+      multiline = false,
+    ) => {
+      if (editingField !== field) {
+        return null;
+      }
+
+      return (
+        <foreignObject
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <div className="quad-inline-edit-shell">
+            {multiline ? (
+              <textarea
+                ref={(node) => {
+                  if (editingField === field) {
+                    editInputRef.current = node;
+                  }
+                }}
+                className="quad-inline-textarea"
+                value={editingValue}
+                onChange={(event) => onEditingValueChange(event.target.value)}
+                onBlur={onCommitInlineEdit}
+                onKeyDown={(event) => handleEditorKeyDown(event, true)}
+              />
+            ) : (
+              <input
+                ref={(node) => {
+                  if (editingField === field) {
+                    editInputRef.current = node;
+                  }
+                }}
+                className="quad-inline-input"
+                value={editingValue}
+                onChange={(event) => onEditingValueChange(event.target.value)}
+                onBlur={onCommitInlineEdit}
+                onKeyDown={(event) => handleEditorKeyDown(event, false)}
+              />
+            )}
+          </div>
+        </foreignObject>
+      );
+    },
+    [
+      editInputRef,
+      editingField,
+      editingValue,
+      handleEditorKeyDown,
+      onCommitInlineEdit,
+      onEditingValueChange,
+    ],
+  );
+
   return (
     <svg className="diagram-backdrop" viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`} aria-hidden="true">
       <defs>
@@ -3448,6 +3665,13 @@ function QuadrantBackdrop({
       <line x1={centerX} y1={plotTop} x2={centerX} y2={plotBottom} stroke="#0f766e" strokeWidth={2.5} />
       <line x1={plotLeft} y1={centerY} x2={plotRight} y2={centerY} stroke="#0f766e" strokeWidth={2.5} />
 
+      {renderInlineEditor('x-left', 8, centerY - 18, 160, 34)}
+      {renderInlineEditor('x-right', CANVAS_WIDTH - 168, centerY - 18, 160, 34)}
+      {renderInlineEditor('y-top', centerX - 220, yTopAxisLabelY - 20, 440, 34)}
+      {renderInlineEditor('y-bottom', centerX - 220, yBottomAxisLabelY - 26, 440, 34)}
+      {renderInlineEditor('header-title', centerX - 280, 2, 560, 34)}
+      {renderInlineEditor('header-subtitle', centerX - 320, 24, 640, 44, true)}
+
       <text
         x={xLeftOutsideX}
         y={centerY}
@@ -3457,6 +3681,13 @@ function QuadrantBackdrop({
         fill="#0f172a"
         fontSize={18}
         fontWeight={700}
+        className="quad-editable-text"
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onStartInlineEdit('x-left', safeXLeft);
+        }}
       >
         {safeXLeft}
       </text>
@@ -3471,28 +3702,90 @@ function QuadrantBackdrop({
           fill="#0f172a"
           fontSize={18}
           fontWeight={700}
+          className="quad-editable-text"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onStartInlineEdit('x-right', safeXRight);
+          }}
         >
           {safeXRight}
         </text>
       ) : null}
 
-      <text x={centerX} y={yTopAxisLabelY} textAnchor="middle" fill="#0f172a" fontSize={18} fontWeight={700}>
+      <text
+        x={centerX}
+        y={yTopAxisLabelY}
+        textAnchor="middle"
+        fill="#0f172a"
+        fontSize={18}
+        fontWeight={700}
+        className="quad-editable-text"
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onStartInlineEdit('y-top', safeYTop);
+        }}
+      >
         {safeYTop}
       </text>
 
       {safeYBottom ? (
-        <text x={centerX} y={yBottomAxisLabelY} textAnchor="middle" fill="#0f172a" fontSize={18} fontWeight={700}>
+        <text
+          x={centerX}
+          y={yBottomAxisLabelY}
+          textAnchor="middle"
+          fill="#0f172a"
+          fontSize={18}
+          fontWeight={700}
+          className="quad-editable-text"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onStartInlineEdit('y-bottom', safeYBottom);
+          }}
+        >
           {safeYBottom}
         </text>
       ) : null}
 
       {safeHeaderTitle ? (
-        <text x={CANVAS_WIDTH / 2} y={headerTitleY} textAnchor="middle" fill="#0f172a" fontSize={28} fontWeight={700}>
+        <text
+          x={CANVAS_WIDTH / 2}
+          y={headerTitleY}
+          textAnchor="middle"
+          fill="#0f172a"
+          fontSize={28}
+          fontWeight={700}
+          className="quad-editable-text"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onStartInlineEdit('header-title', safeHeaderTitle);
+          }}
+        >
           {safeHeaderTitle}
         </text>
       ) : null}
       {safeHeaderSubtitle ? (
-        <text x={CANVAS_WIDTH / 2} y={headerSubtitleY} textAnchor="middle" fill="rgba(15,23,42,0.68)" fontSize={16}>
+        <text
+          x={CANVAS_WIDTH / 2}
+          y={headerSubtitleY}
+          textAnchor="middle"
+          fill="rgba(15,23,42,0.68)"
+          fontSize={16}
+          className="quad-editable-text"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onStartInlineEdit('header-subtitle', safeHeaderSubtitle);
+          }}
+        >
           {safeHeaderSubtitle}
         </text>
       ) : null}

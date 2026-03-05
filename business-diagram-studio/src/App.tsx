@@ -60,12 +60,16 @@ interface VennProjectData {
 }
 
 interface QuadrantProjectData {
-  xAxisBottomName: string;
-  xAxisTopName: string;
-  yAxisLeftName: string;
-  yAxisRightName: string;
+  xAxisLeftName: string;
+  xAxisRightName: string;
+  yAxisTopName: string;
+  yAxisBottomName: string;
   headerTitle?: string;
   headerSubtitle?: string;
+  xAxisBottomName?: string;
+  xAxisTopName?: string;
+  yAxisLeftName?: string;
+  yAxisRightName?: string;
   xAxisName?: string;
   yAxisName?: string;
   services: ServiceNode[];
@@ -346,10 +350,10 @@ function createQuadrantProject(name: string): DiagramProject {
     updatedAt: now,
     items: [],
     quadrant: {
-      xAxisBottomName: '시장 영향력',
-      xAxisTopName: '',
-      yAxisLeftName: '비용 효율성',
-      yAxisRightName: '',
+      xAxisLeftName: '비용 효율성 (낮음)',
+      xAxisRightName: '비용 효율성 (높음)',
+      yAxisTopName: '시장 영향력 (높음)',
+      yAxisBottomName: '시장 영향력 (낮음)',
       headerTitle: 'Competitive Quadrant Canvas',
       headerSubtitle: '서비스 라벨/아이콘을 사분면에 배치해 경쟁 포지셔닝을 비교하세요.',
       services: [],
@@ -430,14 +434,19 @@ function detachItemRefs(services: ServiceNode[], itemId: string) {
 }
 
 function getQuadrantAxisLabels(quadrant: QuadrantProjectData | undefined) {
-  const legacyX = quadrant?.xAxisName ?? '';
-  const legacyY = quadrant?.yAxisName ?? '';
+  // Legacy compatibility:
+  // - Old schema accidentally mapped X to top/bottom and Y to left/right.
+  // - We remap old values into the corrected schema (X=left/right, Y=top/bottom).
+  const legacyHorizontalLeft = quadrant?.yAxisLeftName ?? quadrant?.xAxisName ?? '';
+  const legacyHorizontalRight = quadrant?.yAxisRightName ?? '';
+  const legacyVerticalTop = quadrant?.xAxisTopName ?? quadrant?.yAxisName ?? '';
+  const legacyVerticalBottom = quadrant?.xAxisBottomName ?? '';
 
   return {
-    xBottom: (quadrant?.xAxisBottomName ?? legacyX) || 'X 축',
-    xTop: quadrant?.xAxisTopName ?? '',
-    yLeft: (quadrant?.yAxisLeftName ?? legacyY) || 'Y 축',
-    yRight: quadrant?.yAxisRightName ?? '',
+    xLeft: (quadrant?.xAxisLeftName ?? legacyHorizontalLeft) || 'X 축',
+    xRight: (quadrant?.xAxisRightName ?? legacyHorizontalRight) || '',
+    yTop: (quadrant?.yAxisTopName ?? legacyVerticalTop) || 'Y 축',
+    yBottom: (quadrant?.yAxisBottomName ?? legacyVerticalBottom) || '',
   };
 }
 
@@ -2061,38 +2070,38 @@ function App() {
   );
 
   const updateQuadrantAxis = useCallback(
-    (axis: 'x-bottom' | 'x-top' | 'y-left' | 'y-right', value: string) => {
+    (axis: 'x-left' | 'x-right' | 'y-top' | 'y-bottom', value: string) => {
       replaceCurrentProject((project) => {
         if (project.type !== 'quadrant' || !project.quadrant) {
           return project;
         }
 
-        if (axis === 'x-bottom') {
+        if (axis === 'x-left') {
           return {
             ...project,
             quadrant: {
               ...project.quadrant,
-              xAxisBottomName: value,
+              xAxisLeftName: value,
             },
           };
         }
 
-        if (axis === 'x-top') {
+        if (axis === 'x-right') {
           return {
             ...project,
             quadrant: {
               ...project.quadrant,
-              xAxisTopName: value,
+              xAxisRightName: value,
             },
           };
         }
 
-        if (axis === 'y-left') {
+        if (axis === 'y-top') {
           return {
             ...project,
             quadrant: {
               ...project.quadrant,
-              yAxisLeftName: value,
+              yAxisTopName: value,
             },
           };
         }
@@ -2101,7 +2110,7 @@ function App() {
           ...project,
           quadrant: {
             ...project.quadrant,
-            yAxisRightName: value,
+            yAxisBottomName: value,
           },
         };
       });
@@ -2150,10 +2159,10 @@ function App() {
         ...project,
         quadrant: {
           ...project.quadrant,
-          xAxisBottomName: labels.yLeft,
-          xAxisTopName: labels.yRight,
-          yAxisLeftName: labels.xBottom,
-          yAxisRightName: labels.xTop,
+          xAxisLeftName: labels.yBottom,
+          xAxisRightName: labels.yTop,
+          yAxisTopName: labels.xRight,
+          yAxisBottomName: labels.xLeft,
         },
       };
     });
@@ -2580,36 +2589,36 @@ function App() {
                   <button className="ghost-btn" onClick={swapQuadrantAxes}>X/Y 축 교체</button>
                 </div>
                 <p className="hint-text">가로는 X축, 세로는 Y축으로 고정됩니다.</p>
-                <label className="field-label" htmlFor="axis-x-bottom-name">가로 X축(아래) 이름</label>
+                <label className="field-label" htmlFor="axis-x-left-name">가로 X축(왼쪽) 이름</label>
                 <input
-                  id="axis-x-bottom-name"
+                  id="axis-x-left-name"
                   className="text-input"
-                  value={quadrantAxisLabels?.xBottom ?? ''}
-                  onChange={(event) => updateQuadrantAxis('x-bottom', event.target.value)}
+                  value={quadrantAxisLabels?.xLeft ?? ''}
+                  onChange={(event) => updateQuadrantAxis('x-left', event.target.value)}
                 />
 
-                <label className="field-label" htmlFor="axis-x-top-name">가로 X축(위) 이름</label>
+                <label className="field-label" htmlFor="axis-x-right-name">가로 X축(오른쪽) 이름</label>
                 <input
-                  id="axis-x-top-name"
+                  id="axis-x-right-name"
                   className="text-input"
-                  value={quadrantAxisLabels?.xTop ?? ''}
-                  onChange={(event) => updateQuadrantAxis('x-top', event.target.value)}
+                  value={quadrantAxisLabels?.xRight ?? ''}
+                  onChange={(event) => updateQuadrantAxis('x-right', event.target.value)}
                 />
 
-                <label className="field-label" htmlFor="axis-y-left-name">세로 Y축(왼쪽) 이름</label>
+                <label className="field-label" htmlFor="axis-y-top-name">세로 Y축(위) 이름</label>
                 <input
-                  id="axis-y-left-name"
+                  id="axis-y-top-name"
                   className="text-input"
-                  value={quadrantAxisLabels?.yLeft ?? ''}
-                  onChange={(event) => updateQuadrantAxis('y-left', event.target.value)}
+                  value={quadrantAxisLabels?.yTop ?? ''}
+                  onChange={(event) => updateQuadrantAxis('y-top', event.target.value)}
                 />
 
-                <label className="field-label" htmlFor="axis-y-right-name">세로 Y축(오른쪽) 이름</label>
+                <label className="field-label" htmlFor="axis-y-bottom-name">세로 Y축(아래) 이름</label>
                 <input
-                  id="axis-y-right-name"
+                  id="axis-y-bottom-name"
                   className="text-input"
-                  value={quadrantAxisLabels?.yRight ?? ''}
-                  onChange={(event) => updateQuadrantAxis('y-right', event.target.value)}
+                  value={quadrantAxisLabels?.yBottom ?? ''}
+                  onChange={(event) => updateQuadrantAxis('y-bottom', event.target.value)}
                 />
               </section>
 
@@ -2691,10 +2700,10 @@ function App() {
                 />
               ) : (
                 <QuadrantBackdrop
-                  xAxisBottomName={quadrantAxisLabels?.xBottom ?? 'X 축'}
-                  xAxisTopName={quadrantAxisLabels?.xTop ?? ''}
-                  yAxisLeftName={quadrantAxisLabels?.yLeft ?? 'Y 축'}
-                  yAxisRightName={quadrantAxisLabels?.yRight ?? ''}
+                  xAxisLeftName={quadrantAxisLabels?.xLeft ?? 'X 축'}
+                  xAxisRightName={quadrantAxisLabels?.xRight ?? ''}
+                  yAxisTopName={quadrantAxisLabels?.yTop ?? 'Y 축'}
+                  yAxisBottomName={quadrantAxisLabels?.yBottom ?? ''}
                   headerTitle={quadrantHeaderTexts?.title ?? 'Competitive Quadrant Canvas'}
                   headerSubtitle={quadrantHeaderTexts?.subtitle ?? '서비스 라벨/아이콘을 사분면에 배치해 경쟁 포지셔닝을 비교하세요.'}
                 />
@@ -2845,24 +2854,24 @@ function VennBackdrop({
 }
 
 function QuadrantBackdrop({
-  xAxisBottomName,
-  xAxisTopName,
-  yAxisLeftName,
-  yAxisRightName,
+  xAxisLeftName,
+  xAxisRightName,
+  yAxisTopName,
+  yAxisBottomName,
   headerTitle,
   headerSubtitle,
 }: {
-  xAxisBottomName: string;
-  xAxisTopName: string;
-  yAxisLeftName: string;
-  yAxisRightName: string;
+  xAxisLeftName: string;
+  xAxisRightName: string;
+  yAxisTopName: string;
+  yAxisBottomName: string;
   headerTitle: string;
   headerSubtitle: string;
 }) {
-  const safeXBottom = xAxisBottomName || 'X 축';
-  const safeXTop = xAxisTopName || '';
-  const safeYLeft = yAxisLeftName || 'Y 축';
-  const safeYRight = yAxisRightName || '';
+  const safeXLeft = xAxisLeftName || 'X 축';
+  const safeXRight = xAxisRightName || '';
+  const safeYTop = yAxisTopName || 'Y 축';
+  const safeYBottom = yAxisBottomName || '';
   const safeHeaderTitle = headerTitle ?? '';
   const safeHeaderSubtitle = headerSubtitle ?? '';
 
@@ -2886,28 +2895,24 @@ function QuadrantBackdrop({
         Y
       </text>
 
-      <text x={CANVAS_WIDTH / 2} y={CANVAS_HEIGHT - 24} textAnchor="middle" fill="#0f172a" fontSize={22} fontWeight={700}>
-        {safeXBottom}
+      <text x={92} y={CANVAS_HEIGHT / 2 - 18} textAnchor="start" fill="#0f172a" fontSize={18} fontWeight={700}>
+        {safeXLeft}
       </text>
 
-      <g transform={`translate(26 ${CANVAS_HEIGHT / 2}) rotate(-90)`}>
-        <text textAnchor="middle" fill="#0f172a" fontSize={22} fontWeight={700}>
-          {safeYLeft}
-        </text>
-      </g>
-
-      {safeXTop ? (
-        <text x={CANVAS_WIDTH / 2} y={24} textAnchor="middle" fill="#0f172a" fontSize={18} fontWeight={700}>
-          {safeXTop}
+      {safeXRight ? (
+        <text x={CANVAS_WIDTH - 92} y={CANVAS_HEIGHT / 2 - 18} textAnchor="end" fill="#0f172a" fontSize={18} fontWeight={700}>
+          {safeXRight}
         </text>
       ) : null}
 
-      {safeYRight ? (
-        <g transform={`translate(${CANVAS_WIDTH - 26} ${CANVAS_HEIGHT / 2}) rotate(90)`}>
-          <text textAnchor="middle" fill="#0f172a" fontSize={18} fontWeight={700}>
-            {safeYRight}
-          </text>
-        </g>
+      <text x={CANVAS_WIDTH / 2 + 14} y={108} textAnchor="start" fill="#0f172a" fontSize={18} fontWeight={700}>
+        {safeYTop}
+      </text>
+
+      {safeYBottom ? (
+        <text x={CANVAS_WIDTH / 2 + 14} y={CANVAS_HEIGHT - 86} textAnchor="start" fill="#0f172a" fontSize={18} fontWeight={700}>
+          {safeYBottom}
+        </text>
       ) : null}
 
       {safeHeaderTitle ? (

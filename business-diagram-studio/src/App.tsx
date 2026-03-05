@@ -327,9 +327,9 @@ function createQuadrantProject(name: string): DiagramProject {
     updatedAt: now,
     items: [],
     quadrant: {
-      xAxisBottomName: '비용 효율성',
+      xAxisBottomName: '시장 영향력',
       xAxisTopName: '',
-      yAxisLeftName: '시장 영향력',
+      yAxisLeftName: '비용 효율성',
       yAxisRightName: '',
       services: [],
     },
@@ -1598,6 +1598,29 @@ function App() {
     [replaceCurrentProject],
   );
 
+  const swapQuadrantAxes = useCallback(() => {
+    replaceCurrentProject((project) => {
+      if (project.type !== 'quadrant' || !project.quadrant) {
+        return project;
+      }
+
+      const labels = getQuadrantAxisLabels(project.quadrant);
+
+      return {
+        ...project,
+        quadrant: {
+          ...project.quadrant,
+          xAxisBottomName: labels.yLeft,
+          xAxisTopName: labels.yRight,
+          yAxisLeftName: labels.xBottom,
+          yAxisRightName: labels.xTop,
+        },
+      };
+    });
+
+    setStatusMessage('가로 X축과 세로 Y축 라벨을 서로 교체했습니다.');
+  }, [replaceCurrentProject]);
+
   if (scene === 'home') {
     return (
       <div className="page-shell">
@@ -1991,8 +2014,12 @@ function App() {
           {currentProject.type === 'quadrant' && currentProject.quadrant ? (
             <>
               <section className="inspector-section">
-                <h3>축 정보</h3>
-                <label className="field-label" htmlFor="axis-x-bottom-name">X축(아래) 이름</label>
+                <div className="panel-title-row">
+                  <h3>축 정보</h3>
+                  <button className="ghost-btn" onClick={swapQuadrantAxes}>X/Y 축 교체</button>
+                </div>
+                <p className="hint-text">가로는 X축, 세로는 Y축으로 고정됩니다.</p>
+                <label className="field-label" htmlFor="axis-x-bottom-name">가로 X축(아래) 이름</label>
                 <input
                   id="axis-x-bottom-name"
                   className="text-input"
@@ -2000,7 +2027,7 @@ function App() {
                   onChange={(event) => updateQuadrantAxis('x-bottom', event.target.value)}
                 />
 
-                <label className="field-label" htmlFor="axis-x-top-name">X축(위) 이름</label>
+                <label className="field-label" htmlFor="axis-x-top-name">가로 X축(위) 이름</label>
                 <input
                   id="axis-x-top-name"
                   className="text-input"
@@ -2008,7 +2035,7 @@ function App() {
                   onChange={(event) => updateQuadrantAxis('x-top', event.target.value)}
                 />
 
-                <label className="field-label" htmlFor="axis-y-left-name">Y축(왼쪽) 이름</label>
+                <label className="field-label" htmlFor="axis-y-left-name">세로 Y축(왼쪽) 이름</label>
                 <input
                   id="axis-y-left-name"
                   className="text-input"
@@ -2016,7 +2043,7 @@ function App() {
                   onChange={(event) => updateQuadrantAxis('y-left', event.target.value)}
                 />
 
-                <label className="field-label" htmlFor="axis-y-right-name">Y축(오른쪽) 이름</label>
+                <label className="field-label" htmlFor="axis-y-right-name">세로 Y축(오른쪽) 이름</label>
                 <input
                   id="axis-y-right-name"
                   className="text-input"
@@ -2229,6 +2256,13 @@ function QuadrantBackdrop({
       <rect x="0" y="0" width={CANVAS_WIDTH} height={CANVAS_HEIGHT} fill="url(#quad-bg)" rx="26" />
       <line x1={CANVAS_WIDTH / 2} y1={84} x2={CANVAS_WIDTH / 2} y2={CANVAS_HEIGHT - 74} stroke="#0f766e" strokeWidth={2.5} />
       <line x1={84} y1={CANVAS_HEIGHT / 2} x2={CANVAS_WIDTH - 84} y2={CANVAS_HEIGHT / 2} stroke="#0f766e" strokeWidth={2.5} />
+
+      <text x={CANVAS_WIDTH - 66} y={CANVAS_HEIGHT / 2 - 10} textAnchor="middle" fill="rgba(15,23,42,0.72)" fontSize={14} fontWeight={700}>
+        X
+      </text>
+      <text x={CANVAS_WIDTH / 2 + 14} y={102} textAnchor="middle" fill="rgba(15,23,42,0.72)" fontSize={14} fontWeight={700}>
+        Y
+      </text>
 
       <text x={CANVAS_WIDTH / 2} y={CANVAS_HEIGHT - 24} textAnchor="middle" fill="#0f172a" fontSize={22} fontWeight={700}>
         {safeXBottom}

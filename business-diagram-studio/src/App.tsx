@@ -111,6 +111,7 @@ interface DragSession {
 const STORAGE_KEY = 'business-diagram-studio.projects.v1';
 const PROJECT_SNAPSHOT_API_ENDPOINT = '/api/projects/snapshot';
 const PROJECT_AUTOSAVE_INTERVAL_MS = 100;
+const PROJECT_HISTORY_LIMIT = 200;
 
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 720;
@@ -164,6 +165,11 @@ function clamp(value: number, min: number, max: number) {
 
 function createId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 8)}-${Date.now().toString(36)}`;
+}
+
+interface ProjectHistory {
+  past: DiagramProject[];
+  future: DiagramProject[];
 }
 
 function resolveVennSetSlot(setItem: VennSet, index: number) {
@@ -220,6 +226,17 @@ function blurActiveEditableElement() {
   if (active instanceof HTMLElement && isEditableTarget(active)) {
     active.blur();
   }
+}
+
+function cloneProject(project: DiagramProject) {
+  return JSON.parse(JSON.stringify(project)) as DiagramProject;
+}
+
+function projectSignature(project: DiagramProject) {
+  return JSON.stringify({
+    ...project,
+    updatedAt: '',
+  });
 }
 
 function readFileAsDataUrl(file: File) {
@@ -552,6 +569,8 @@ function App() {
   const canvasDropDepthRef = useRef(0);
   const apiHydratedRef = useRef(false);
   const projectsRef = useRef<DiagramProject[]>([]);
+  const projectHistoriesRef = useRef<Record<string, ProjectHistory>>({});
+  const dragHistoryRef = useRef<{ projectId: string; before: DiagramProject } | null>(null);
   const saveDirtyRef = useRef(false);
   const saveInFlightRef = useRef(false);
   const autoSaveErrorNotifiedRef = useRef(false);
@@ -842,11 +861,60 @@ function App() {
     setSelectedVennSetId(null);
   }, [currentProjectId, scene]);
 
+  useEffect(() => {
+    const existingIds = new Set(projects.map((project) => project.id));
+    const nextHistories: Record<string, ProjectHistory> = {};
+
+    Object.entries(projectHistoriesRef.current).forEach(([projectId, history]) => {
+      if (existingIds.has(projectId)) {
+        nextHistories[projectId] = history;
+      }
+    });
+
+    projectHistoriesRef.current = nextHistories;
+  }, [projects]);
+
+  const ensureProjectHistory = useCallback((projectId: string) => {
+    const existing = projectHistoriesRef.current[projectId];
+    if (existing) {
+      return existing;
+    }
+
+    const created: ProjectHistory = { past: [], future: [] };
+    projectHistoriesRef.current[projectId] = created;
+    return created;
+  }, []);
+
+  const pushProjectHistory = useCallback(
+    (projectId: string, snapshot: DiagramProject, clearFuture: boolean) => {
+      const history = ensureProjectHistory(projectId);
+      history.past.push(cloneProject(snapshot));
+
+      if (history.past.length > PROJECT_HISTORY_LIMIT) {
+        history.past.splice(0, history.past.length - PROJECT_HISTORY_LIMIT);
+      }
+
+      if (clearFuture) {
+        history.future = [];
+      }
+    },
+    [ensureProjectHistory],
+  );
+
   const replaceCurrentProject = useCallback(
-    (mutator: (project: DiagramProject) => DiagramProject) => {
+    (
+      mutator: (project: DiagramProject) => DiagramProject,
+      options?: {
+        trackHistory?: boolean;
+        clearFuture?: boolean;
+      },
+    ) => {
       if (!currentProjectId) {
         return;
       }
+
+      const trackHistory = options?.trackHistory ?? true;
+      const clearFuture = options?.clearFuture ?? true;
 
       setProjects((previous) =>
         previous.map((project) => {
@@ -859,6 +927,10 @@ function App() {
             return project;
           }
 
+          if (trackHistory) {
+            pushProjectHistory(currentProjectId, project, clearFuture);
+          }
+
           return {
             ...nextProject,
             updatedAt: new Date().toISOString(),
@@ -866,8 +938,26 @@ function App() {
         }),
       );
     },
-    [currentProjectId],
+    [currentProjectId, pushProjectHistory],
   );
+
+  const stageDragHistorySnapshot = useCallback(() => {
+    if (!currentProjectId) {
+      dragHistoryRef.current = null;
+      return;
+    }
+
+    const current = projectsRef.current.find((project) => project.id === currentProjectId);
+    if (!current) {
+      dragHistoryRef.current = null;
+      return;
+    }
+
+    dragHistoryRef.current = {
+      projectId: currentProjectId,
+      before: cloneProject(current),
+    };
+  }, [currentProjectId]);
 
   const openProject = useCallback((projectId: string) => {
     setCurrentProjectId(projectId);
@@ -976,6 +1066,131 @@ function App() {
     },
     [replaceCurrentProject],
   );
+
+  const resetCanvasSelection = useCallback(() => {
+    dragSessionRef.current = null;
+    setSelectedItemId(null);
+    setSelectedVennSetId(null);
+    setEditingTextItemId(null);
+    setIsPlacingTextBox(false);
+  }, []);
+
+  const undoCurrentProject = useCallback(() => {
+    if (!currentProjectId) {
+      return;
+    }
+
+    let undone = false;
+    setProjects((previous) => {
+      const index = previous.findIndex((project) => project.id === currentProjectId);
+      if (index < 0) {
+        return previous;
+      }
+
+      const history = ensureProjectHistory(currentProjectId);
+      const previousSnapshot = history.past.pop();
+      if (!previousSnapshot) {
+        return previous;
+      }
+
+      const currentSnapshot = previous[index];
+      history.future.push(cloneProject(currentSnapshot));
+      if (history.future.length > PROJECT_HISTORY_LIMIT) {
+        history.future.splice(0, history.future.length - PROJECT_HISTORY_LIMIT);
+      }
+
+      const nextProjects = [...previous];
+      nextProjects[index] = {
+        ...cloneProject(previousSnapshot),
+        updatedAt: new Date().toISOString(),
+      };
+
+      undone = true;
+      return nextProjects;
+    });
+
+    if (!undone) {
+      setStatusMessage('되돌릴 변경이 없습니다.');
+      return;
+    }
+
+    resetCanvasSelection();
+    setStatusMessage('이전 변경을 되돌렸습니다.');
+  }, [currentProjectId, ensureProjectHistory, resetCanvasSelection]);
+
+  const redoCurrentProject = useCallback(() => {
+    if (!currentProjectId) {
+      return;
+    }
+
+    let redone = false;
+    setProjects((previous) => {
+      const index = previous.findIndex((project) => project.id === currentProjectId);
+      if (index < 0) {
+        return previous;
+      }
+
+      const history = ensureProjectHistory(currentProjectId);
+      const nextSnapshot = history.future.pop();
+      if (!nextSnapshot) {
+        return previous;
+      }
+
+      history.past.push(cloneProject(previous[index]));
+      if (history.past.length > PROJECT_HISTORY_LIMIT) {
+        history.past.splice(0, history.past.length - PROJECT_HISTORY_LIMIT);
+      }
+
+      const nextProjects = [...previous];
+      nextProjects[index] = {
+        ...cloneProject(nextSnapshot),
+        updatedAt: new Date().toISOString(),
+      };
+
+      redone = true;
+      return nextProjects;
+    });
+
+    if (!redone) {
+      setStatusMessage('다시 실행할 변경이 없습니다.');
+      return;
+    }
+
+    resetCanvasSelection();
+    setStatusMessage('되돌린 변경을 다시 적용했습니다.');
+  }, [currentProjectId, ensureProjectHistory, resetCanvasSelection]);
+
+  useEffect(() => {
+    const handleUndoRedoKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) {
+        return;
+      }
+
+      if (!event.metaKey && !event.ctrlKey) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      if (key === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) {
+          redoCurrentProject();
+          return;
+        }
+
+        undoCurrentProject();
+        return;
+      }
+
+      if (key === 'y') {
+        event.preventDefault();
+        redoCurrentProject();
+      }
+    };
+
+    window.addEventListener('keydown', handleUndoRedoKeyDown);
+    return () => window.removeEventListener('keydown', handleUndoRedoKeyDown);
+  }, [redoCurrentProject, undoCurrentProject]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1143,7 +1358,7 @@ function App() {
         }
 
         return project;
-      });
+      }, { trackHistory: false, clearFuture: false });
     };
 
     const handlePointerEnd = (event: PointerEvent) => {
@@ -1152,7 +1367,24 @@ function App() {
         return;
       }
 
+      const dragHistorySnapshot = dragHistoryRef.current;
       dragSessionRef.current = null;
+      dragHistoryRef.current = null;
+
+      if (!dragHistorySnapshot) {
+        return;
+      }
+
+      const current = projectsRef.current.find((project) => project.id === dragHistorySnapshot.projectId);
+      if (!current) {
+        return;
+      }
+
+      if (projectSignature(current) === projectSignature(dragHistorySnapshot.before)) {
+        return;
+      }
+
+      pushProjectHistory(dragHistorySnapshot.projectId, dragHistorySnapshot.before, true);
     };
 
     window.addEventListener('pointermove', handlePointerMove);
@@ -1164,13 +1396,14 @@ function App() {
       window.removeEventListener('pointerup', handlePointerEnd);
       window.removeEventListener('pointercancel', handlePointerEnd);
     };
-  }, [canvasScale, replaceCurrentProject]);
+  }, [canvasScale, pushProjectHistory, replaceCurrentProject]);
 
   const beginItemInteraction = useCallback((event: ReactPointerEvent<HTMLDivElement>, item: CanvasItem, mode: 'move' | 'resize') => {
     if (isEditableTarget(event.target)) {
       return;
     }
 
+    stageDragHistorySnapshot();
     blurActiveEditableElement();
     event.preventDefault();
     event.stopPropagation();
@@ -1193,7 +1426,7 @@ function App() {
       originWidth: item.width,
       originHeight: item.height,
     };
-  }, []);
+  }, [stageDragHistorySnapshot]);
 
   const beginVennSetInteraction = useCallback(
     (event: ReactPointerEvent<SVGCircleElement | HTMLDivElement>, setId: string, mode: 'move' | 'resize') => {
@@ -1213,6 +1446,7 @@ function App() {
       const setItem = currentProject.venn.sets[setIndex];
       const layout = getVennSetLayout(setItem, setIndex);
 
+      stageDragHistorySnapshot();
       blurActiveEditableElement();
       event.preventDefault();
       event.stopPropagation();
@@ -1234,7 +1468,7 @@ function App() {
         originRadius: layout.radius,
       };
     },
-    [currentProject, isPlacingTextBox],
+    [currentProject, isPlacingTextBox, stageDragHistorySnapshot],
   );
 
   const addTextBoxAt = useCallback((point: { x: number; y: number }) => {

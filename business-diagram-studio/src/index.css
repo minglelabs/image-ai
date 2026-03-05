@@ -372,6 +372,13 @@ textarea {
   padding: 9px 12px;
 }
 
+.primary-btn:disabled,
+.ghost-btn:disabled,
+.danger-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .primary-btn {
   background: var(--primary);
   color: white;

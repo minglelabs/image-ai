@@ -1,5 +1,6 @@
 import {
   type ChangeEvent,
+  type DragEvent as ReactDragEvent,
   type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
@@ -406,9 +407,11 @@ function App() {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState('기존 프로젝트를 열거나 새 프로젝트를 만들어주세요.');
   const [canvasScale, setCanvasScale] = useState(1);
+  const [isCanvasDropActive, setIsCanvasDropActive] = useState(false);
 
   const canvasViewportRef = useRef<HTMLDivElement | null>(null);
   const dragSessionRef = useRef<DragSession | null>(null);
+  const canvasDropDepthRef = useRef(0);
 
   const currentProject = useMemo(
     () => projects.find((project) => project.id === currentProjectId) ?? null,
@@ -479,6 +482,15 @@ function App() {
 
     return () => observer.disconnect();
   }, [scene, currentProjectId]);
+
+  useEffect(() => {
+    if (scene === 'editor' && currentProject?.type === 'quadrant') {
+      return;
+    }
+
+    canvasDropDepthRef.current = 0;
+    setIsCanvasDropActive(false);
+  }, [currentProject?.type, scene]);
 
   const replaceCurrentProject = useCallback(
     (mutator: (project: DiagramProject) => DiagramProject) => {
@@ -755,36 +767,52 @@ function App() {
     setStatusMessage('텍스트 박스를 추가했습니다.');
   }, [replaceCurrentProject]);
 
-  const handleAttachImages = useCallback(
-    async (event: ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(event.target.files ?? []);
-      if (!files.length) {
-        return;
+  const createImageDescriptors = useCallback(async (files: File[]) => {
+    return Promise.all(
+      files.map(async (file) => {
+        const src = await readFileAsDataUrl(file);
+        const dimensions = await readImageDimensions(src);
+        const fit = fitWithinBox(dimensions.width, dimensions.height, 240, 180);
+
+        return {
+          src,
+          alt: file.name,
+          width: fit.width,
+          height: fit.height,
+        };
+      }),
+    );
+  }, []);
+
+  const appendImageDescriptorsToCanvas = useCallback(
+    (
+      descriptors: Array<{ src: string; alt: string; width: number; height: number }>,
+      options?: { dropPoint?: { x: number; y: number } },
+    ) => {
+      if (!descriptors.length) {
+        return [] as string[];
       }
-
-      const descriptors = await Promise.all(
-        files.map(async (file) => {
-          const src = await readFileAsDataUrl(file);
-          const dimensions = await readImageDimensions(src);
-          const fit = fitWithinBox(dimensions.width, dimensions.height, 240, 180);
-
-          return {
-            src,
-            alt: file.name,
-            width: fit.width,
-            height: fit.height,
-          };
-        }),
-      );
 
       const createdIds = descriptors.map(() => createId('item'));
 
       replaceCurrentProject((project) => {
         const nextItems = [...project.items];
+        const dropPoint = options?.dropPoint;
 
         descriptors.forEach((descriptor, index) => {
           const id = createdIds[index];
-          const originOffset = (project.items.length + index) % 8;
+
+          let x = 90 + ((project.items.length + index) % 8) * 26;
+          let y = 90 + ((project.items.length + index) % 8) * 24;
+
+          if (dropPoint) {
+            const col = index % 4;
+            const row = Math.floor(index / 4);
+            const offsetX = col * 28;
+            const offsetY = row * 28;
+            x = clamp(dropPoint.x - descriptor.width / 2 + offsetX, 0, CANVAS_WIDTH - descriptor.width);
+            y = clamp(dropPoint.y - descriptor.height / 2 + offsetY, 0, CANVAS_HEIGHT - descriptor.height);
+          }
 
           nextItems.push(
             createImageItem({
@@ -793,8 +821,8 @@ function App() {
               alt: descriptor.alt,
               width: descriptor.width,
               height: descriptor.height,
-              x: 90 + originOffset * 26,
-              y: 90 + originOffset * 24,
+              x,
+              y,
             }),
           );
         });
@@ -805,11 +833,118 @@ function App() {
         };
       });
 
-      setSelectedItemId(createdIds.at(-1) ?? null);
-      setStatusMessage(`${files.length}개의 이미지를 캔버스에 첨부했습니다.`);
-      event.target.value = '';
+      return createdIds;
     },
     [replaceCurrentProject],
+  );
+
+  const attachImageFilesToCanvas = useCallback(
+    async (files: File[], options?: { dropPoint?: { x: number; y: number } }) => {
+      const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+      if (!imageFiles.length) {
+        return false;
+      }
+
+      const descriptors = await createImageDescriptors(imageFiles);
+      const createdIds = appendImageDescriptorsToCanvas(descriptors, options);
+      setSelectedItemId(createdIds.at(-1) ?? null);
+      setStatusMessage(`${imageFiles.length}개의 이미지를 캔버스에 첨부했습니다.`);
+      return true;
+    },
+    [appendImageDescriptorsToCanvas, createImageDescriptors],
+  );
+
+  const handleAttachImages = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(event.target.files ?? []);
+      if (!files.length) {
+        return;
+      }
+
+      await attachImageFilesToCanvas(files);
+      event.target.value = '';
+    },
+    [attachImageFilesToCanvas],
+  );
+
+  const handleCanvasDragEnter = useCallback(
+    (event: ReactDragEvent<HTMLDivElement>) => {
+      if (currentProject?.type !== 'quadrant') {
+        return;
+      }
+
+      if (!event.dataTransfer.types.includes('Files')) {
+        return;
+      }
+
+      event.preventDefault();
+      canvasDropDepthRef.current += 1;
+      setIsCanvasDropActive(true);
+    },
+    [currentProject?.type],
+  );
+
+  const handleCanvasDragOver = useCallback(
+    (event: ReactDragEvent<HTMLDivElement>) => {
+      if (currentProject?.type !== 'quadrant') {
+        return;
+      }
+
+      if (!event.dataTransfer.types.includes('Files')) {
+        return;
+      }
+
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'copy';
+      setIsCanvasDropActive(true);
+    },
+    [currentProject?.type],
+  );
+
+  const handleCanvasDragLeave = useCallback(
+    (event: ReactDragEvent<HTMLDivElement>) => {
+      if (currentProject?.type !== 'quadrant') {
+        return;
+      }
+
+      if (!event.dataTransfer.types.includes('Files')) {
+        return;
+      }
+
+      event.preventDefault();
+      canvasDropDepthRef.current = Math.max(0, canvasDropDepthRef.current - 1);
+      if (canvasDropDepthRef.current === 0) {
+        setIsCanvasDropActive(false);
+      }
+    },
+    [currentProject?.type],
+  );
+
+  const handleCanvasDrop = useCallback(
+    async (event: ReactDragEvent<HTMLDivElement>) => {
+      if (currentProject?.type !== 'quadrant') {
+        return;
+      }
+
+      event.preventDefault();
+      canvasDropDepthRef.current = 0;
+      setIsCanvasDropActive(false);
+
+      const files = Array.from(event.dataTransfer.files ?? []).filter((file) => file.type.startsWith('image/'));
+      if (!files.length) {
+        return;
+      }
+
+      const boardRect = event.currentTarget.getBoundingClientRect();
+      const dropPoint = {
+        x: clamp((event.clientX - boardRect.left) / canvasScale, 0, CANVAS_WIDTH),
+        y: clamp((event.clientY - boardRect.top) / canvasScale, 0, CANVAS_HEIGHT),
+      };
+
+      await attachImageFilesToCanvas(files, { dropPoint });
+      setStatusMessage(`${files.length}개의 이미지를 드롭 위치에 추가했습니다.`);
+    },
+    [attachImageFilesToCanvas, canvasScale, currentProject?.type],
   );
 
   const updateVennSetName = useCallback(
@@ -2163,14 +2298,16 @@ function App() {
           <section className="inspector-section">
             <h3>상태</h3>
             <p className="status-text">{statusMessage}</p>
-            <p className="hint-text">요소를 클릭해 선택하고 드래그로 이동, 우하단 핸들로 리사이즈할 수 있습니다.</p>
+            <p className="hint-text">요소를 클릭해 이동/리사이즈하고, Quadrant 캔버스에 이미지 파일을 드롭해 추가할 수 있습니다.</p>
           </section>
         </aside>
 
         <section className="canvas-panel" ref={canvasViewportRef}>
           <div className="canvas-stage" style={{ width: CANVAS_WIDTH * canvasScale, height: CANVAS_HEIGHT * canvasScale }}>
             <div
-              className="canvas-board"
+              className={`canvas-board ${
+                isCanvasDropActive && currentProject.type === 'quadrant' ? 'drop-active' : ''
+              }`}
               style={{
                 width: CANVAS_WIDTH,
                 height: CANVAS_HEIGHT,
@@ -2178,6 +2315,10 @@ function App() {
                 transformOrigin: 'top left',
               }}
               onPointerDown={() => setSelectedItemId(null)}
+              onDragEnter={handleCanvasDragEnter}
+              onDragOver={handleCanvasDragOver}
+              onDragLeave={handleCanvasDragLeave}
+              onDrop={(event) => void handleCanvasDrop(event)}
             >
               {currentProject.type === 'venn' ? (
                 <VennBackdrop sets={currentProject.venn?.sets ?? []} />

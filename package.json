@@ -6,6 +6,9 @@
     "build": "npm --prefix ./mosaic-ai run build",
     "start": "npm --prefix ./mosaic-ai run start",
     "lint": "npm --prefix ./mosaic-ai run lint",
-    "install:mosaic-ai": "npm --prefix ./mosaic-ai install"
+    "install:mosaic-ai": "npm --prefix ./mosaic-ai install",
+    "dev:business-diagram-studio": "npm --prefix ./business-diagram-studio run dev",
+    "build:business-diagram-studio": "npm --prefix ./business-diagram-studio run build",
+    "install:business-diagram-studio": "npm --prefix ./business-diagram-studio install"
   }
 }

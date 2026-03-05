@@ -4,10 +4,11 @@
 # image-ai Workspace
 
 `image-ai` is a multi-project workspace for visual content tooling.
-It currently includes two independent products:
+It currently includes three independent products:
 
 - `mosaic-ai`: image privacy/editing app (mosaic brush workflow)
 - `appstore-preview`: App Store screenshot/video composer for iPhone layouts
+- `business-diagram-studio`: Venn/Competitive Quadrant chart canvas editor
 
 ## Project Overview
 
@@ -219,19 +220,46 @@ Tech stack:
 Docs:
 - [mosaic-ai README](mosaic-ai/README.md)
 
+### 3. `business-diagram-studio/` (React + TypeScript)
+
+Purpose:
+- Create business Venn diagrams and competitive quadrant charts from structured inputs
+- Place text and image assets directly on a chart canvas
+
+What it provides:
+- Home flow: open existing project or create new project
+- New project flow: choose `Venn Diagram` or `Competitive Quadrant`
+- Chart-specific input forms:
+  - Venn: set names/icons, service names/icons
+  - Quadrant: x/y axis names, service names/icons
+- Canvas editor:
+  - add text boxes
+  - attach multiple images
+  - drag and resize text/image elements
+- Local persistence via browser `localStorage`
+
+Tech stack:
+- React 19
+- TypeScript
+- Vite
+
+Docs:
+- [business-diagram-studio README](business-diagram-studio/README.md)
+
 ## Repository Layout
 
 ```text
 image-ai/
 ├─ mosaic-ai/          # Next.js-based mosaic editor
 ├─ appstore-preview/   # React/Vite App Store preview composer
-├─ package.json        # Root convenience scripts (mosaic-ai proxy)
+├─ business-diagram-studio/ # React/Vite business chart canvas editor
+├─ package.json        # Root convenience scripts
 └─ .gitignore
 ```
 
 ## Root Scripts
 
-The root scripts proxy to `mosaic-ai`:
+The root scripts include `mosaic-ai` convenience commands and direct commands for `business-diagram-studio`:
 
 ```bash
 npm run install:mosaic-ai
@@ -239,6 +267,9 @@ npm run dev
 npm run build
 npm run start
 npm run lint
+npm run install:business-diagram-studio
+npm run dev:business-diagram-studio
+npm run build:business-diagram-studio
 ```
 
 ## Running Each Project

@@ -236,7 +236,8 @@ What it provides:
   - add text boxes
   - attach multiple images
   - drag and resize text/image elements
-- Local persistence via browser `localStorage`
+- Local file-based SoT persistence via `.project-saves/*.business-diagram-project.json`
+- 100ms auto-save loop to local API storage
 
 Tech stack:
 - React 19

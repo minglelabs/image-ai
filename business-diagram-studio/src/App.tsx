@@ -99,6 +99,8 @@ interface DragSession {
 }
 
 const STORAGE_KEY = 'business-diagram-studio.projects.v1';
+const PROJECT_SNAPSHOT_API_ENDPOINT = '/api/projects/snapshot';
+const PROJECT_AUTOSAVE_INTERVAL_MS = 100;
 
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 720;
@@ -385,6 +387,40 @@ function loadProjectsFromStorage() {
   }
 }
 
+async function loadProjectsFromApi() {
+  const response = await fetch(PROJECT_SNAPSHOT_API_ENDPOINT, {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`프로젝트 로드 실패: ${response.status}`);
+  }
+
+  const payload = (await response.json()) as { projects?: unknown };
+  if (!payload || !Array.isArray(payload.projects)) {
+    return [] as DiagramProject[];
+  }
+
+  return payload.projects as DiagramProject[];
+}
+
+async function saveProjectsToApi(projects: DiagramProject[]) {
+  const response = await fetch(PROJECT_SNAPSHOT_API_ENDPOINT, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ projects }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`프로젝트 저장 실패: ${response.status}`);
+  }
+}
+
 function detachItemRefs(services: ServiceNode[], itemId: string) {
   return services.map((service) => ({
     ...service,
@@ -413,7 +449,7 @@ function getQuadrantHeaderTexts(quadrant: QuadrantProjectData | undefined) {
 }
 
 function App() {
-  const [projects, setProjects] = useState<DiagramProject[]>(() => loadProjectsFromStorage());
+  const [projects, setProjects] = useState<DiagramProject[]>([]);
   const [scene, setScene] = useState<Scene>('home');
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [newProjectType, setNewProjectType] = useState<ProjectType>('venn');
@@ -428,11 +464,33 @@ function App() {
   const canvasViewportRef = useRef<HTMLDivElement | null>(null);
   const dragSessionRef = useRef<DragSession | null>(null);
   const canvasDropDepthRef = useRef(0);
+  const apiHydratedRef = useRef(false);
+  const projectsRef = useRef<DiagramProject[]>([]);
+  const saveDirtyRef = useRef(false);
+  const saveInFlightRef = useRef(false);
+  const autoSaveErrorNotifiedRef = useRef(false);
+  const lastSavedSignatureRef = useRef('');
 
   const currentProject = useMemo(
     () => projects.find((project) => project.id === currentProjectId) ?? null,
     [projects, currentProjectId],
   );
+
+  useEffect(() => {
+    if (!currentProjectId) {
+      return;
+    }
+
+    const exists = projects.some((project) => project.id === currentProjectId);
+    if (exists) {
+      return;
+    }
+
+    setCurrentProjectId(null);
+    setScene('home');
+    setSelectedItemId(null);
+    setSelectedVennSetId(null);
+  }, [currentProjectId, projects]);
 
   const selectedItem = useMemo(
     () => currentProject?.items.find((item) => item.id === selectedItemId) ?? null,
@@ -486,12 +544,88 @@ function App() {
   }, [currentProject]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
-    }, 180);
-
-    return () => window.clearTimeout(timer);
+    projectsRef.current = projects;
+    if (apiHydratedRef.current) {
+      saveDirtyRef.current = true;
+    }
   }, [projects]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const hydrateProjects = async () => {
+      let loadedProjects: DiagramProject[] = [];
+
+      try {
+        loadedProjects = await loadProjectsFromApi();
+      } catch {
+        loadedProjects = [];
+      }
+
+      if (!loadedProjects.length) {
+        const legacyProjects = loadProjectsFromStorage();
+        if (legacyProjects.length) {
+          loadedProjects = legacyProjects;
+          try {
+            await saveProjectsToApi(legacyProjects);
+            window.localStorage.removeItem(STORAGE_KEY);
+          } catch {
+            // ignore migration write failure here; autosave loop will retry once API is reachable.
+          }
+        }
+      }
+
+      if (cancelled) {
+        return;
+      }
+
+      setProjects(loadedProjects);
+      lastSavedSignatureRef.current = JSON.stringify(loadedProjects);
+      apiHydratedRef.current = true;
+      saveDirtyRef.current = false;
+    };
+
+    void hydrateProjects();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (!apiHydratedRef.current || !saveDirtyRef.current || saveInFlightRef.current) {
+        return;
+      }
+
+      const snapshot = projectsRef.current;
+      const nextSignature = JSON.stringify(snapshot);
+      if (nextSignature === lastSavedSignatureRef.current) {
+        saveDirtyRef.current = false;
+        return;
+      }
+
+      saveInFlightRef.current = true;
+      void saveProjectsToApi(snapshot)
+        .then(() => {
+          lastSavedSignatureRef.current = nextSignature;
+          saveDirtyRef.current = false;
+          autoSaveErrorNotifiedRef.current = false;
+        })
+        .catch(() => {
+          saveDirtyRef.current = true;
+          if (!autoSaveErrorNotifiedRef.current) {
+            setStatusMessage('자동 저장이 실패했습니다. API 연결 상태를 확인해 주세요.');
+            autoSaveErrorNotifiedRef.current = true;
+          }
+        })
+        .finally(() => {
+          saveInFlightRef.current = false;
+        });
+    }, PROJECT_AUTOSAVE_INTERVAL_MS);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (scene !== 'editor') {

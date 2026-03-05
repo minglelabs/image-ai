@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -k -n WEB,API -c cyan,green \"npm:dev:web\" \"npm:dev:api\"",
+    "dev:web": "vite",
+    "dev:api": "tsx api/src/server.ts",
+    "api:typecheck": "tsc -p tsconfig.api.json --noEmit",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },
@@ -17,6 +20,8 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.0",
+    "concurrently": "^9.2.1",
+    "tsx": "^4.20.6",
     "typescript": "~5.9.3",
     "vite": "^7.2.1"
   }

@@ -21,6 +21,7 @@
 # production
 /build
 **/dist
+**/.project-saves
 
 # misc
 .DS_Store

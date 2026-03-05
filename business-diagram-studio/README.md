@@ -20,8 +20,9 @@
 - Quadrant 전용 정보 입력
   - x축 / y축 이름
   - 서비스 이름/아이콘
-- 로컬 저장
-  - `localStorage` 자동 저장
+- 로컬 SoT 저장
+  - `.project-saves/*.business-diagram-project.json` 파일 기반 저장
+  - 0.1초(100ms) 간격 자동 저장
 
 ## 시작하기
 
@@ -30,6 +31,8 @@ cd business-diagram-studio
 npm install
 npm run dev
 ```
+
+`npm run dev` 실행 시 Web(Vite) + Local API가 함께 실행됩니다.
 
 ## 빌드
 

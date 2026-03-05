@@ -2891,10 +2891,12 @@ function App() {
                     />
                   )}
 
-                  <div
-                    className="resize-handle"
-                    onPointerDown={(event) => beginItemInteraction(event, item, 'resize')}
-                  />
+                  {selectedItemId === item.id ? (
+                    <div
+                      className="resize-handle"
+                      onPointerDown={(event) => beginItemInteraction(event, item, 'resize')}
+                    />
+                  ) : null}
                 </div>
               ))}
             </div>

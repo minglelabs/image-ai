@@ -727,6 +727,15 @@ function App() {
 
   useEffect(() => {
     projectsRef.current = projects;
+
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+      } catch {
+        // Ignore local backup write errors (e.g., quota exceeded).
+      }
+    }
+
     if (apiHydratedRef.current) {
       saveDirtyRef.current = true;
     }
@@ -840,7 +849,7 @@ function App() {
         .catch(() => {
           saveDirtyRef.current = true;
           if (!autoSaveErrorNotifiedRef.current) {
-            setStatusMessage('자동 저장이 실패했습니다. API 연결 상태를 확인해 주세요.');
+            setStatusMessage('API 자동 저장이 실패했습니다. 브라우저 로컬 백업으로 임시 저장 중입니다.');
             autoSaveErrorNotifiedRef.current = true;
           }
         })

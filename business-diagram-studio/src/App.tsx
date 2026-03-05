@@ -527,12 +527,14 @@ function App() {
   const [newProjectName, setNewProjectName] = useState('');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedVennSetId, setSelectedVennSetId] = useState<string | null>(null);
+  const [editingTextItemId, setEditingTextItemId] = useState<string | null>(null);
   const [isPlacingTextBox, setIsPlacingTextBox] = useState(false);
   const [statusMessage, setStatusMessage] = useState('기존 프로젝트를 열거나 새 프로젝트를 만들어주세요.');
   const [canvasScale, setCanvasScale] = useState(1);
   const [isCanvasDropActive, setIsCanvasDropActive] = useState(false);
 
   const canvasViewportRef = useRef<HTMLDivElement | null>(null);
+  const textEditorRef = useRef<HTMLTextAreaElement | null>(null);
   const dragSessionRef = useRef<DragSession | null>(null);
   const canvasDropDepthRef = useRef(0);
   const apiHydratedRef = useRef(false);
@@ -570,6 +572,37 @@ function App() {
     () => currentProject?.items.find((item) => item.id === selectedItemId) ?? null,
     [currentProject, selectedItemId],
   );
+
+  useEffect(() => {
+    if (!editingTextItemId) {
+      return;
+    }
+
+    const node = textEditorRef.current;
+    if (!node) {
+      return;
+    }
+
+    node.focus();
+    const cursor = node.value.length;
+    node.setSelectionRange(cursor, cursor);
+  }, [editingTextItemId]);
+
+  useEffect(() => {
+    if (!editingTextItemId) {
+      return;
+    }
+
+    if (!currentProject) {
+      setEditingTextItemId(null);
+      return;
+    }
+
+    const editingItem = currentProject.items.find((item) => item.id === editingTextItemId);
+    if (!editingItem || editingItem.type !== 'text') {
+      setEditingTextItemId(null);
+    }
+  }, [currentProject, editingTextItemId]);
 
   const selectedVennSetLayout = useMemo(() => {
     if (!currentProject || currentProject.type !== 'venn' || !currentProject.venn || !selectedVennSetId) {
@@ -828,6 +861,7 @@ function App() {
     setScene('editor');
     setSelectedItemId(null);
     setSelectedVennSetId(null);
+    setEditingTextItemId(null);
     setStatusMessage('프로젝트를 열었습니다.');
   }, []);
 
@@ -840,6 +874,7 @@ function App() {
     setScene('editor');
     setSelectedItemId(null);
     setSelectedVennSetId(null);
+    setEditingTextItemId(null);
     setNewProjectName('');
     setStatusMessage('새 프로젝트를 생성했습니다.');
   }, [newProjectName, projects, newProjectType]);
@@ -853,6 +888,7 @@ function App() {
         setScene('home');
         setSelectedItemId(null);
         setSelectedVennSetId(null);
+        setEditingTextItemId(null);
       }
     },
     [currentProjectId],
@@ -923,6 +959,7 @@ function App() {
 
       setSelectedItemId((previous) => (previous === itemId ? null : previous));
       setStatusMessage('선택 항목을 삭제했습니다.');
+      setEditingTextItemId((previous) => (previous === itemId ? null : previous));
     },
     [replaceCurrentProject],
   );
@@ -1117,10 +1154,17 @@ function App() {
   }, [canvasScale, replaceCurrentProject]);
 
   const beginItemInteraction = useCallback((event: ReactPointerEvent<HTMLDivElement>, item: CanvasItem, mode: 'move' | 'resize') => {
+    if (isEditableTarget(event.target)) {
+      return;
+    }
+
     event.preventDefault();
     event.stopPropagation();
     setSelectedItemId(item.id);
     setSelectedVennSetId(null);
+    if (item.type !== 'text' || mode === 'resize') {
+      setEditingTextItemId(null);
+    }
 
     dragSessionRef.current = {
       target: 'item',
@@ -1159,6 +1203,7 @@ function App() {
       event.stopPropagation();
       setSelectedItemId(null);
       setSelectedVennSetId(setId);
+      setEditingTextItemId(null);
 
       dragSessionRef.current = {
         target: 'venn-set',
@@ -1203,6 +1248,7 @@ function App() {
     setSelectedItemId(id);
     setSelectedVennSetId(null);
     setIsPlacingTextBox(false);
+    setEditingTextItemId(id);
     setStatusMessage('텍스트 박스를 추가했습니다.');
   }, [replaceCurrentProject]);
 
@@ -1210,6 +1256,7 @@ function App() {
     setIsPlacingTextBox(true);
     setSelectedItemId(null);
     setSelectedVennSetId(null);
+    setEditingTextItemId(null);
     setStatusMessage('캔버스를 클릭해 텍스트 박스를 배치해 주세요.');
   }, []);
 
@@ -1228,6 +1275,7 @@ function App() {
 
       setSelectedItemId(null);
       setSelectedVennSetId(null);
+      setEditingTextItemId(null);
     },
     [addTextBoxAt, canvasScale, isPlacingTextBox],
   );
@@ -2943,17 +2991,60 @@ function App() {
                     zIndex: selectedItemId === item.id ? 50 : 10 + index,
                   }}
                   onPointerDown={(event) => beginItemInteraction(event, item, 'move')}
+                  onDoubleClick={(event) => {
+                    if (item.type !== 'text') {
+                      return;
+                    }
+
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setSelectedItemId(item.id);
+                    setSelectedVennSetId(null);
+                    setIsPlacingTextBox(false);
+                    setEditingTextItemId(item.id);
+                  }}
                 >
                   {item.type === 'text' ? (
-                    <div
-                      className="item-text"
-                      style={{
-                        fontSize: item.fontSize,
-                        color: item.color,
-                      }}
-                    >
-                      {item.text || '텍스트'}
-                    </div>
+                    editingTextItemId === item.id ? (
+                      <textarea
+                        ref={(node) => {
+                          if (editingTextItemId === item.id) {
+                            textEditorRef.current = node;
+                          }
+                        }}
+                        className="canvas-text-editor"
+                        value={item.text}
+                        style={{
+                          fontSize: item.fontSize,
+                          color: item.color,
+                        }}
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onChange={(event) => {
+                          updateItem(item.id, (current) =>
+                            current.type === 'text' ? { ...current, text: event.target.value } : current,
+                          );
+                        }}
+                        onBlur={() => {
+                          setEditingTextItemId((previous) => (previous === item.id ? null : previous));
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Escape' || (event.key === 'Enter' && !event.shiftKey)) {
+                            event.preventDefault();
+                            event.currentTarget.blur();
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div
+                        className="item-text"
+                        style={{
+                          fontSize: item.fontSize,
+                          color: item.color,
+                        }}
+                      >
+                        {item.text || '텍스트'}
+                      </div>
+                    )
                   ) : (
                     <img
                       className="item-image"

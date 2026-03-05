@@ -120,6 +120,7 @@ const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 720;
 const TEXT_ITEM_MIN_WIDTH = 48;
 const TEXT_ITEM_MIN_HEIGHT = 52;
+const QUADRANT_DROP_IMAGE_DEFAULT_SIZE = 100;
 const VENN_SET_RADIUS_MIN = 90;
 const VENN_SET_RADIUS_MAX = 320;
 
@@ -1583,12 +1584,30 @@ function App() {
     [addTextBoxAt, canvasScale, isPlacingTextBox],
   );
 
-  const createImageDescriptors = useCallback(async (files: File[]) => {
+  const createImageDescriptors = useCallback(async (
+    files: File[],
+    options?: { maxWidth?: number; maxHeight?: number; fixedSize?: { width: number; height: number } },
+  ) => {
     return Promise.all(
       files.map(async (file) => {
         const src = await readFileAsDataUrl(file);
+
+        if (options?.fixedSize) {
+          return {
+            src,
+            alt: file.name,
+            width: options.fixedSize.width,
+            height: options.fixedSize.height,
+          };
+        }
+
         const dimensions = await readImageDimensions(src);
-        const fit = fitWithinBox(dimensions.width, dimensions.height, 240, 180);
+        const fit = fitWithinBox(
+          dimensions.width,
+          dimensions.height,
+          options?.maxWidth ?? 240,
+          options?.maxHeight ?? 180,
+        );
 
         return {
           src,
@@ -1655,13 +1674,21 @@ function App() {
   );
 
   const attachImageFilesToCanvas = useCallback(
-    async (files: File[], options?: { dropPoint?: { x: number; y: number } }) => {
+    async (
+      files: File[],
+      options?: {
+        dropPoint?: { x: number; y: number };
+        maxWidth?: number;
+        maxHeight?: number;
+        fixedSize?: { width: number; height: number };
+      },
+    ) => {
       const imageFiles = files.filter((file) => file.type.startsWith('image/'));
       if (!imageFiles.length) {
         return false;
       }
 
-      const descriptors = await createImageDescriptors(imageFiles);
+      const descriptors = await createImageDescriptors(imageFiles, options);
       const createdIds = appendImageDescriptorsToCanvas(descriptors, options);
       setSelectedItemId(createdIds.at(-1) ?? null);
       setStatusMessage(`${imageFiles.length}개의 이미지를 캔버스에 첨부했습니다.`);
@@ -1757,7 +1784,13 @@ function App() {
         y: clamp((event.clientY - boardRect.top) / canvasScale, 0, CANVAS_HEIGHT),
       };
 
-      await attachImageFilesToCanvas(files, { dropPoint });
+      await attachImageFilesToCanvas(files, {
+        dropPoint,
+        fixedSize: {
+          width: QUADRANT_DROP_IMAGE_DEFAULT_SIZE,
+          height: QUADRANT_DROP_IMAGE_DEFAULT_SIZE,
+        },
+      });
       setStatusMessage(`${files.length}개의 이미지를 드롭 위치에 추가했습니다.`);
     },
     [attachImageFilesToCanvas, canvasScale, currentProject?.type],

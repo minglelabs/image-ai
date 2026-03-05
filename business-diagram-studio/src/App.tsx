@@ -3196,13 +3196,6 @@ function QuadrantBackdrop({
       <line x1={centerX} y1={plotTop} x2={centerX} y2={plotBottom} stroke="#0f766e" strokeWidth={2.5} />
       <line x1={plotLeft} y1={centerY} x2={plotRight} y2={centerY} stroke="#0f766e" strokeWidth={2.5} />
 
-      <text x={plotRight + 18} y={centerY - 10} textAnchor="middle" fill="rgba(15,23,42,0.72)" fontSize={14} fontWeight={700}>
-        X
-      </text>
-      <text x={centerX + 14} y={plotTop + 20} textAnchor="middle" fill="rgba(15,23,42,0.72)" fontSize={14} fontWeight={700}>
-        Y
-      </text>
-
       <text
         x={xLeftOutsideX}
         y={centerY}

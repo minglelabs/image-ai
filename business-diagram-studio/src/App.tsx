@@ -875,13 +875,13 @@ function App() {
   }, [scene, currentProject?.type, currentProjectId]);
 
   useEffect(() => {
-    if (scene === 'editor' && currentProject?.type === 'quadrant') {
+    if (scene === 'editor' && currentProject) {
       return;
     }
 
     canvasDropDepthRef.current = 0;
     setIsCanvasDropActive(false);
-  }, [currentProject?.type, scene]);
+  }, [currentProject, scene]);
 
   useEffect(() => {
     if (scene !== 'editor') {
@@ -1712,7 +1712,7 @@ function App() {
 
   const handleCanvasDragEnter = useCallback(
     (event: ReactDragEvent<HTMLDivElement>) => {
-      if (currentProject?.type !== 'quadrant') {
+      if (!currentProject) {
         return;
       }
 
@@ -1724,12 +1724,12 @@ function App() {
       canvasDropDepthRef.current += 1;
       setIsCanvasDropActive(true);
     },
-    [currentProject?.type],
+    [currentProject],
   );
 
   const handleCanvasDragOver = useCallback(
     (event: ReactDragEvent<HTMLDivElement>) => {
-      if (currentProject?.type !== 'quadrant') {
+      if (!currentProject) {
         return;
       }
 
@@ -1741,12 +1741,12 @@ function App() {
       event.dataTransfer.dropEffect = 'copy';
       setIsCanvasDropActive(true);
     },
-    [currentProject?.type],
+    [currentProject],
   );
 
   const handleCanvasDragLeave = useCallback(
     (event: ReactDragEvent<HTMLDivElement>) => {
-      if (currentProject?.type !== 'quadrant') {
+      if (!currentProject) {
         return;
       }
 
@@ -1760,12 +1760,12 @@ function App() {
         setIsCanvasDropActive(false);
       }
     },
-    [currentProject?.type],
+    [currentProject],
   );
 
   const handleCanvasDrop = useCallback(
     async (event: ReactDragEvent<HTMLDivElement>) => {
-      if (currentProject?.type !== 'quadrant') {
+      if (!currentProject) {
         return;
       }
 
@@ -1793,7 +1793,7 @@ function App() {
       });
       setStatusMessage(`${files.length}개의 이미지를 드롭 위치에 추가했습니다.`);
     },
-    [attachImageFilesToCanvas, canvasScale, currentProject?.type],
+    [attachImageFilesToCanvas, canvasScale, currentProject],
   );
 
   const updateVennSetName = useCallback(
@@ -3244,7 +3244,7 @@ function App() {
             <p className="hint-text">
               {isPlacingTextBox
                 ? '현재 텍스트박스 배치 모드입니다. 캔버스를 클릭해 원하는 위치에 추가하세요.'
-                : '요소를 클릭해 이동/리사이즈하고, Quadrant 캔버스에 이미지 파일을 드롭해 추가할 수 있습니다.'}
+                : '요소를 클릭해 이동/리사이즈하고, 캔버스에 이미지 파일을 드롭해 추가할 수 있습니다.'}
             </p>
           </section>
         </aside>
@@ -3253,7 +3253,7 @@ function App() {
           <div className="canvas-stage" style={{ width: CANVAS_WIDTH * canvasScale, height: CANVAS_HEIGHT * canvasScale }}>
             <div
               className={`canvas-board ${
-                isCanvasDropActive && currentProject.type === 'quadrant' ? 'drop-active' : ''
+                isCanvasDropActive ? 'drop-active' : ''
               }`}
               style={{
                 width: CANVAS_WIDTH,

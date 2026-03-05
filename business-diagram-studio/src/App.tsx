@@ -3508,7 +3508,7 @@ function QuadrantBackdrop({
   const headerTitleY = 22;
   const headerSubtitleY = 44;
   const yTopAxisLabelY = 86;
-  const yBottomAxisLabelY = CANVAS_HEIGHT - 22;
+  const yBottomAxisLabelY = CANVAS_HEIGHT - 30;
 
   const handleEditorKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLInputElement | HTMLTextAreaElement>, multiline: boolean) => {

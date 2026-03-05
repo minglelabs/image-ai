@@ -405,6 +405,7 @@ function App() {
   const [newProjectType, setNewProjectType] = useState<ProjectType>('venn');
   const [newProjectName, setNewProjectName] = useState('');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [isPlacingTextBox, setIsPlacingTextBox] = useState(false);
   const [statusMessage, setStatusMessage] = useState('기존 프로젝트를 열거나 새 프로젝트를 만들어주세요.');
   const [canvasScale, setCanvasScale] = useState(1);
   const [isCanvasDropActive, setIsCanvasDropActive] = useState(false);
@@ -491,6 +492,15 @@ function App() {
     canvasDropDepthRef.current = 0;
     setIsCanvasDropActive(false);
   }, [currentProject?.type, scene]);
+
+  useEffect(() => {
+    if (scene !== 'editor') {
+      setIsPlacingTextBox(false);
+      return;
+    }
+
+    setIsPlacingTextBox(false);
+  }, [currentProjectId, scene]);
 
   const replaceCurrentProject = useCallback(
     (mutator: (project: DiagramProject) => DiagramProject) => {
@@ -744,8 +754,12 @@ function App() {
     };
   }, []);
 
-  const addTextBox = useCallback(() => {
+  const addTextBoxAt = useCallback((point: { x: number; y: number }) => {
     const id = createId('item');
+    const width = 250;
+    const height = 70;
+    const x = clamp(point.x - width / 2, 0, CANVAS_WIDTH - width);
+    const y = clamp(point.y - height / 2, 0, CANVAS_HEIGHT - height);
 
     replaceCurrentProject((project) => ({
       ...project,
@@ -754,18 +768,43 @@ function App() {
         createTextItem({
           id,
           text: '텍스트를 입력하세요',
-          x: 486,
-          y: 322,
-          width: 250,
-          height: 70,
+          x,
+          y,
+          width,
+          height,
           fontSize: 30,
         }),
       ],
     }));
 
     setSelectedItemId(id);
+    setIsPlacingTextBox(false);
     setStatusMessage('텍스트 박스를 추가했습니다.');
   }, [replaceCurrentProject]);
+
+  const startTextBoxPlacement = useCallback(() => {
+    setIsPlacingTextBox(true);
+    setSelectedItemId(null);
+    setStatusMessage('캔버스를 클릭해 텍스트 박스를 배치해 주세요.');
+  }, []);
+
+  const handleCanvasPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (isPlacingTextBox) {
+        const boardRect = event.currentTarget.getBoundingClientRect();
+        const point = {
+          x: clamp((event.clientX - boardRect.left) / canvasScale, 0, CANVAS_WIDTH),
+          y: clamp((event.clientY - boardRect.top) / canvasScale, 0, CANVAS_HEIGHT),
+        };
+
+        addTextBoxAt(point);
+        return;
+      }
+
+      setSelectedItemId(null);
+    },
+    [addTextBoxAt, canvasScale, isPlacingTextBox],
+  );
 
   const createImageDescriptors = useCallback(async (files: File[]) => {
     return Promise.all(
@@ -1938,7 +1977,9 @@ function App() {
           <section className="inspector-section">
             <h3>캔버스 첨부</h3>
             <div className="inline-actions">
-              <button className="primary-btn" onClick={addTextBox}>텍스트박스 추가</button>
+              <button className="primary-btn" onClick={startTextBoxPlacement}>
+                {isPlacingTextBox ? '텍스트박스 위치 선택 중' : '텍스트박스 추가'}
+              </button>
               <label className="file-btn">
                 이미지 여러개 첨부
                 <input type="file" accept="image/*" multiple onChange={handleAttachImages} />
@@ -2298,7 +2339,11 @@ function App() {
           <section className="inspector-section">
             <h3>상태</h3>
             <p className="status-text">{statusMessage}</p>
-            <p className="hint-text">요소를 클릭해 이동/리사이즈하고, Quadrant 캔버스에 이미지 파일을 드롭해 추가할 수 있습니다.</p>
+            <p className="hint-text">
+              {isPlacingTextBox
+                ? '현재 텍스트박스 배치 모드입니다. 캔버스를 클릭해 원하는 위치에 추가하세요.'
+                : '요소를 클릭해 이동/리사이즈하고, Quadrant 캔버스에 이미지 파일을 드롭해 추가할 수 있습니다.'}
+            </p>
           </section>
         </aside>
 
@@ -2314,7 +2359,7 @@ function App() {
                 transform: `scale(${canvasScale})`,
                 transformOrigin: 'top left',
               }}
-              onPointerDown={() => setSelectedItemId(null)}
+              onPointerDown={handleCanvasPointerDown}
               onDragEnter={handleCanvasDragEnter}
               onDragOver={handleCanvasDragOver}
               onDragLeave={handleCanvasDragLeave}

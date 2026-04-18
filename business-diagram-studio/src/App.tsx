@@ -3542,6 +3542,8 @@ function QuadrantBackdrop({
   const headerSubtitleY = 44;
   const yTopAxisLabelY = 86;
   const yBottomAxisLabelY = CANVAS_HEIGHT - 30;
+  const axisLabelFontSize = 32;
+  const axisEditorHeight = 46;
 
   const handleEditorKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLInputElement | HTMLTextAreaElement>, multiline: boolean) => {
@@ -3573,6 +3575,7 @@ function QuadrantBackdrop({
       width: number,
       height: number,
       multiline = false,
+      largeText = false,
     ) => {
       if (editingField !== field) {
         return null;
@@ -3594,7 +3597,7 @@ function QuadrantBackdrop({
                     editInputRef.current = node;
                   }
                 }}
-                className="quad-inline-textarea"
+                className={`quad-inline-textarea ${largeText ? 'quad-inline-large-text' : ''}`}
                 value={editingValue}
                 onChange={(event) => onEditingValueChange(event.target.value)}
                 onBlur={onCommitInlineEdit}
@@ -3607,7 +3610,7 @@ function QuadrantBackdrop({
                     editInputRef.current = node;
                   }
                 }}
-                className="quad-inline-input"
+                className={`quad-inline-input ${largeText ? 'quad-inline-large-text' : ''}`}
                 value={editingValue}
                 onChange={(event) => onEditingValueChange(event.target.value)}
                 onBlur={onCommitInlineEdit}
@@ -3641,10 +3644,10 @@ function QuadrantBackdrop({
       <line x1={centerX} y1={plotTop} x2={centerX} y2={plotBottom} stroke="#0f766e" strokeWidth={2.5} />
       <line x1={plotLeft} y1={centerY} x2={plotRight} y2={centerY} stroke="#0f766e" strokeWidth={2.5} />
 
-      {renderInlineEditor('x-left', 8, centerY - 18, 160, 34)}
-      {renderInlineEditor('x-right', CANVAS_WIDTH - 168, centerY - 18, 160, 34)}
-      {renderInlineEditor('y-top', centerX - 220, yTopAxisLabelY - 20, 440, 34)}
-      {renderInlineEditor('y-bottom', centerX - 220, yBottomAxisLabelY - 26, 440, 34)}
+      {renderInlineEditor('x-left', 8, centerY - axisEditorHeight / 2, 160, axisEditorHeight, false, true)}
+      {renderInlineEditor('x-right', CANVAS_WIDTH - 168, centerY - axisEditorHeight / 2, 160, axisEditorHeight, false, true)}
+      {renderInlineEditor('y-top', centerX - 260, yTopAxisLabelY - axisEditorHeight / 2, 520, axisEditorHeight, false, true)}
+      {renderInlineEditor('y-bottom', centerX - 260, yBottomAxisLabelY - axisEditorHeight / 2, 520, axisEditorHeight, false, true)}
       {renderInlineEditor('header-title', centerX - 280, 2, 560, 34)}
       {renderInlineEditor('header-subtitle', centerX - 320, 24, 640, 44, true)}
 
@@ -3655,7 +3658,7 @@ function QuadrantBackdrop({
         dominantBaseline="middle"
         transform={`rotate(-90 ${xLeftOutsideX} ${centerY})`}
         fill="#0f172a"
-        fontSize={18}
+        fontSize={axisLabelFontSize}
         fontWeight={700}
         className="quad-editable-text"
         onPointerDown={(event) => event.stopPropagation()}
@@ -3676,7 +3679,7 @@ function QuadrantBackdrop({
           dominantBaseline="middle"
           transform={`rotate(90 ${xRightOutsideX} ${centerY})`}
           fill="#0f172a"
-          fontSize={18}
+          fontSize={axisLabelFontSize}
           fontWeight={700}
           className="quad-editable-text"
           onPointerDown={(event) => event.stopPropagation()}
@@ -3695,7 +3698,7 @@ function QuadrantBackdrop({
         y={yTopAxisLabelY}
         textAnchor="middle"
         fill="#0f172a"
-        fontSize={18}
+        fontSize={axisLabelFontSize}
         fontWeight={700}
         className="quad-editable-text"
         onPointerDown={(event) => event.stopPropagation()}
@@ -3714,7 +3717,7 @@ function QuadrantBackdrop({
           y={yBottomAxisLabelY}
           textAnchor="middle"
           fill="#0f172a"
-          fontSize={18}
+          fontSize={axisLabelFontSize}
           fontWeight={700}
           className="quad-editable-text"
           onPointerDown={(event) => event.stopPropagation()}

@@ -554,6 +554,11 @@ textarea {
   box-shadow: 0 0 0 2px rgba(14, 116, 144, 0.2);
 }
 
+.quad-inline-large-text {
+  font-size: 22px;
+  font-weight: 700;
+}
+
 .quad-inline-textarea {
   min-height: 44px;
   resize: none;

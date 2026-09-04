@@ -4,12 +4,13 @@
 # image-ai Workspace
 
 `image-ai` is a multi-project workspace for visual content tooling.
-It currently includes four independent products:
+It currently includes five independent products:
 
 - `mosaic-ai`: image privacy/editing app (mosaic brush workflow)
 - `appstore-preview`: App Store screenshot/video composer for iPhone layouts
 - `business-diagram-studio`: Venn/Competitive Quadrant chart canvas editor
 - `document-scanner`: browser-based smartphone document photo scanner
+- `pdf-manager`: browser-based image-to-PDF and PDF-to-image utility
 
 ## Project Overview
 
@@ -270,6 +271,29 @@ Tech stack:
 Docs:
 - [document-scanner README](document-scanner/README.md)
 
+### 5. `pdf-manager/` (React + TypeScript)
+
+Purpose:
+- Combine multiple JPG, PNG, HEIC, or HEIF images into one PDF
+- Split a PDF into separate PNG or JPG page images
+
+What it provides:
+- Drag-and-drop and multi-file image selection
+- Image preview, reordering, and removal before PDF creation
+- A4, Letter, or original-size PDF pages with automatic or fixed orientation
+- PDF page previews before export
+- PNG or JPG page rendering packaged into one ZIP archive
+- Local-only browser processing with no upload API
+
+Tech stack:
+- React 19
+- TypeScript
+- Vite
+- pdf-lib, PDF.js, JSZip, and heic2any
+
+Docs:
+- [pdf-manager README](pdf-manager/README.md)
+
 ## Repository Layout
 
 ```text
@@ -278,6 +302,7 @@ image-ai/
 ├─ appstore-preview/   # React/Vite App Store preview composer
 ├─ business-diagram-studio/ # React/Vite business chart canvas editor
 ├─ document-scanner/   # React/Vite document photo scanner
+├─ pdf-manager/        # React/Vite image/PDF conversion utility
 ├─ package.json        # Root convenience scripts
 └─ .gitignore
 ```
@@ -299,6 +324,10 @@ npm run dev:document-scanner
 npm run build:document-scanner
 npm run lint:document-scanner
 npm run build:business-diagram-studio
+npm run install:pdf-manager
+npm run dev:pdf-manager
+npm run build:pdf-manager
+npm run lint:pdf-manager
 ```
 
 ## Running Each Project
@@ -340,8 +369,23 @@ npm run install:document-scanner
 npm run dev:document-scanner
 ```
 
+### Run `pdf-manager` directly
+
+```bash
+cd pdf-manager
+pnpm install
+pnpm dev
+```
+
+Or from root:
+
+```bash
+npm run install:pdf-manager
+npm run dev:pdf-manager
+```
+
 ## Notes
 
-- All four projects are frontend-first and can run independently.
+- All five projects are frontend-first and can run independently.
 - Each subproject has isolated dependencies and its own build pipeline.
 - Root scripts provide convenience commands for each project.

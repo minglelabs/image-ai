@@ -13,6 +13,10 @@
     "dev:document-scanner": "npm --prefix ./document-scanner run dev",
     "build:document-scanner": "npm --prefix ./document-scanner run build",
     "lint:document-scanner": "npm --prefix ./document-scanner run lint",
-    "install:document-scanner": "npm --prefix ./document-scanner install"
+    "install:document-scanner": "npm --prefix ./document-scanner install",
+    "install:pdf-manager": "pnpm --dir ./pdf-manager install",
+    "dev:pdf-manager": "pnpm --dir ./pdf-manager dev",
+    "build:pdf-manager": "pnpm --dir ./pdf-manager build",
+    "lint:pdf-manager": "pnpm --dir ./pdf-manager lint"
   }
 }

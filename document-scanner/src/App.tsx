@@ -65,10 +65,24 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function readFileAsDataUrl(file: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('이미지 파일을 읽지 못했습니다.'));
+      }
+    };
+    reader.onerror = () => reject(new Error('이미지 파일을 읽지 못했습니다.'));
+    reader.readAsDataURL(file);
+  });
+}
+
 function loadImageFromUrl(url: string, fileName: string, size: number) {
   return new Promise<SourceImage>((resolve, reject) => {
     const image = new Image();
-    image.decoding = 'async';
     image.onload = () => {
       resolve({
         url,
@@ -80,7 +94,9 @@ function loadImageFromUrl(url: string, fileName: string, size: number) {
       });
     };
     image.onerror = () => {
-      URL.revokeObjectURL(url);
+      if (url.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
+      }
       reject(new Error('이미지를 불러오지 못했습니다.'));
     };
     image.src = url;
@@ -88,32 +104,23 @@ function loadImageFromUrl(url: string, fileName: string, size: number) {
 }
 
 async function fileToImage(file: File) {
-  if (typeof createImageBitmap === 'function') {
+  const isHeicFile = /\.(heic|heif)$/i.test(file.name) || /image\/(heic|heif)/i.test(file.type);
+  if (isHeicFile) {
     try {
-      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-      const canvas = document.createElement('canvas');
-      canvas.width = bitmap.width;
-      canvas.height = bitmap.height;
-      const context = canvas.getContext('2d');
-      if (!context) {
-        bitmap.close();
-        throw new Error('이미지 캔버스를 만들 수 없습니다.');
+      const { default: convertHeic } = await import('heic2any');
+      const converted = await convertHeic({ blob: file, toType: 'image/png', quality: 1 });
+      const convertedBlob = Array.isArray(converted) ? converted[0] : converted;
+      if (!convertedBlob) {
+        throw new Error('변환 결과가 비어 있습니다.');
       }
 
-      context.drawImage(bitmap, 0, 0);
-      bitmap.close();
-      const normalizedBlob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-      if (!normalizedBlob) {
-        throw new Error('이미지 방향을 정리하지 못했습니다.');
-      }
-
-      return loadImageFromUrl(URL.createObjectURL(normalizedBlob), file.name, file.size);
-    } catch {
-      // Some browsers cannot decode HEIC/HEIF with ImageBitmap. Fall back to the native image decoder.
+      return loadImageFromUrl(await readFileAsDataUrl(convertedBlob), file.name, file.size);
+    } catch (error) {
+      throw new Error(error instanceof Error ? `HEIC 변환에 실패했습니다. ${error.message}` : 'HEIC 변환에 실패했습니다.');
     }
   }
 
-  return loadImageFromUrl(URL.createObjectURL(file), file.name, file.size);
+  return loadImageFromUrl(await readFileAsDataUrl(file), file.name, file.size);
 }
 
 function getInitialCorners(): Point[] {
@@ -404,7 +411,7 @@ function App() {
           사진 업로드하기
           <ChevronRight size={17} />
         </button>
-        <p className="upload-note">JPG · PNG · WEBP · 최대 30MB</p>
+        <p className="upload-note">JPG · PNG · WEBP · HEIC · 최대 30MB</p>
         <div className="feature-trail">
           <span><Crop size={14} /> 4점 원근 보정</span>
           <span><WandSparkles size={14} /> 그림자 제거</span>

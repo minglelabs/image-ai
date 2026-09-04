@@ -4,11 +4,12 @@
 # image-ai Workspace
 
 `image-ai` is a multi-project workspace for visual content tooling.
-It currently includes three independent products:
+It currently includes four independent products:
 
 - `mosaic-ai`: image privacy/editing app (mosaic brush workflow)
 - `appstore-preview`: App Store screenshot/video composer for iPhone layouts
 - `business-diagram-studio`: Venn/Competitive Quadrant chart canvas editor
+- `document-scanner`: browser-based smartphone document photo scanner
 
 ## Project Overview
 
@@ -134,7 +135,7 @@ curl -s -X DELETE http://localhost:4318/api/projects/<projectId>
 # 9) patch one text box
 curl -s -X PATCH http://localhost:4318/api/projects/<projectId>/canvases/<canvasId>/text-boxes/<textBoxId> \
   -H "Content-Type: application/json" \
-  -d '{"text":"새 번역 문구","width":540,"fontSize":64}'
+  -d '{"text":"Translated copy","width":540,"fontSize":64}'
 
 # 10) move one text box
 curl -s -X PATCH "http://localhost:4318/api/projects/<projectId>/canvases/<canvasId>/text-boxes/<textBoxId>/position" \
@@ -144,7 +145,7 @@ curl -s -X PATCH "http://localhost:4318/api/projects/<projectId>/canvases/<canva
 # 11) patch multiple text boxes
 curl -s -X PATCH http://localhost:4318/api/projects/<projectId>/canvases/<canvasId>/text-boxes \
   -H "Content-Type: application/json" \
-  -d '{"updates":[{"id":"text-1","text":"문구 A","width":520},{"id":"text-2","text":"문구 B","fontSize":56}]}'
+  -d '{"updates":[{"id":"text-1","text":"Copy A","width":520},{"id":"text-2","text":"Copy B","fontSize":56}]}'
 
 # 12) move/scale iPhone frame
 curl -s -X PATCH "http://localhost:4318/api/projects/<projectId>/canvases/<canvasId>/phone" \
@@ -182,7 +183,7 @@ Notes:
 - Text box measured fields are split by engine:
   - `measuredLineCountByCanvas`, `measuredTextWidthByCanvas`
   - `measuredLineCountByDom`, `measuredTextWidthByDom`
-- Text box limits: `width 120..round(canvasWidth*0.93)`, `fontSize 18..160` (API에서 범위 밖 값은 clamp).
+- Text box limits: `width 120..round(canvasWidth*0.93)`, `fontSize 18..160` (the API clamps values outside these ranges).
 - Shape metadata includes background, phone frame, and all text boxes.
 - ZIP export can include original media binaries when `includeOriginalMedia=true`.
 - GUI media upload now syncs binary to API media storage (`PUT /api/projects/:projectId/canvases/:canvasId/media`).
@@ -247,6 +248,28 @@ Tech stack:
 Docs:
 - [business-diagram-studio README](business-diagram-studio/README.md)
 
+### 4. `document-scanner/` (React + TypeScript)
+
+Purpose:
+- Turn smartphone photos of contracts and paper documents into clean scanner-style PNGs
+
+What it provides:
+- Paper presets for A4, B5, A5, and Letter
+- Portrait and landscape output orientation
+- Four-corner crop controls with perspective correction
+- Exact paper aspect-ratio output
+- Local shadow, lighting, curvature, grayscale, contrast, and sharpness correction
+- Document black-and-white, soft grayscale, and color-preserving scan modes
+- High-resolution PNG export without sending images to a server
+
+Tech stack:
+- React 19
+- TypeScript
+- Vite
+
+Docs:
+- [document-scanner README](document-scanner/README.md)
+
 ## Repository Layout
 
 ```text
@@ -254,6 +277,7 @@ image-ai/
 ├─ mosaic-ai/          # Next.js-based mosaic editor
 ├─ appstore-preview/   # React/Vite App Store preview composer
 ├─ business-diagram-studio/ # React/Vite business chart canvas editor
+├─ document-scanner/   # React/Vite document photo scanner
 ├─ package.json        # Root convenience scripts
 └─ .gitignore
 ```
@@ -270,6 +294,10 @@ npm run start
 npm run lint
 npm run install:business-diagram-studio
 npm run dev:business-diagram-studio
+npm run install:document-scanner
+npm run dev:document-scanner
+npm run build:document-scanner
+npm run lint:document-scanner
 npm run build:business-diagram-studio
 ```
 
@@ -297,8 +325,23 @@ npm --prefix ./appstore-preview install
 npm --prefix ./appstore-preview run dev
 ```
 
+### Run `document-scanner` directly
+
+```bash
+cd document-scanner
+npm install
+npm run dev
+```
+
+Or from root:
+
+```bash
+npm run install:document-scanner
+npm run dev:document-scanner
+```
+
 ## Notes
 
-- Both projects are frontend-first and can run independently.
+- All four projects are frontend-first and can run independently.
 - Each subproject has isolated dependencies and its own build pipeline.
-- Root scripts are intentionally minimal and currently focused on `mosaic-ai`.
+- Root scripts provide convenience commands for each project.

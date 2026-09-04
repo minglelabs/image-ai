@@ -9,6 +9,10 @@
     "install:mosaic-ai": "npm --prefix ./mosaic-ai install",
     "dev:business-diagram-studio": "npm --prefix ./business-diagram-studio run dev",
     "build:business-diagram-studio": "npm --prefix ./business-diagram-studio run build",
-    "install:business-diagram-studio": "npm --prefix ./business-diagram-studio install"
+    "install:business-diagram-studio": "npm --prefix ./business-diagram-studio install",
+    "dev:document-scanner": "npm --prefix ./document-scanner run dev",
+    "build:document-scanner": "npm --prefix ./document-scanner run build",
+    "lint:document-scanner": "npm --prefix ./document-scanner run lint",
+    "install:document-scanner": "npm --prefix ./document-scanner install"
   }
 }
